@@ -27,22 +27,43 @@ Warning: Fixtures MUST be declared with @action.uses({fixtures}) else your app w
 
 from py4web import action, request, abort, redirect, URL
 from yatl.helpers import A
-from .common import db, session, T, cache, auth, logger, authenticated, unauthenticated, flash
+from .common import (
+    db,
+    session,
+    T,
+    cache,
+    auth,
+    logger,
+    authenticated,
+    unauthenticated,
+    flash,
+)
 from py4web.utils.url_signer import URLSigner
 from .models import get_user_email
 
 url_signer = URLSigner(session)
 
-@action('index')
-@action.uses('index.html', db, auth, url_signer)
+
+@action("index")
+@action.uses("index.html", db, auth, url_signer)
 def index():
     return dict(
         # COMPLETE: return here any signed URLs you need.
-        my_callback_url = URL('my_callback', signer=url_signer),
+        my_callback_url=URL("my_callback", signer=url_signer),
     )
 
-@action('my_callback')
-@action.uses() # Add here things like db, auth, etc.
+
+@action("statistics")
+@action.uses("statistics.html", db, auth, url_signer)
+def statistics():
+    return dict(
+        # COMPLETE: return here any signed URLs you need.
+        my_callback_url=URL("my_callback", signer=url_signer),
+    )
+
+
+@action("my_callback")
+@action.uses()  # Add here things like db, auth, etc.
 def my_callback():
     # The return value should be a dictionary that will be sent as JSON.
     return dict(my_value=3)

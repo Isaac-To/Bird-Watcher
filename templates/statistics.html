@@ -1,0 +1,68 @@
+[[extend 'layout.html']]
+
+<style>
+  [v-cloak] {
+    display: none;
+  }
+</style>
+
+<div class="section" id="app" v-cloak>
+  <!-- Put here your Vue.js template -->
+  <h1 class="title is-1">Statistics</h1>
+  <div>
+    <div><h2 class="subtitle is-2">User Information</h2></div>
+    <div class="is-flex">
+      <div class="card m-2 p-4">
+        <h3 class="subtitle is-3"># of Bird Sightings over Time</h3>
+      </div>
+      <div class="card m-2 p-4">
+        <h3 class="subtitle is-3">Time Spent</h3>
+      </div>
+      <div class="card m-2 p-4">
+        <h3 class="subtitle is-3">Heat Map</h3>
+      </div>
+    </div>
+    <hr class="is-divider" />
+    <div>
+      <h2 class="subtitle is-2">Species Seen:</h2>
+      <form class="is-flex m-2 mb-4">
+        <input
+          class="input is-primary mr-2"
+          type="text"
+          placeholder="Looking for a specific species?"
+        />
+        <button class="button is-primary" type="button">Search</button>
+      </form>
+      <div class="box">
+        <h3 class="subtitle is-3">Golden Peacock</h3>
+        <div class="box">
+          <div>
+            Seen:
+            <ul class="ml-2 is-flex">
+              <li>
+                <button type="button" class="button m-2">2024-01-01</button>
+              </li>
+              <li>
+                <button type="button" class="button m-2">2024-01-02</button>
+              </li>
+              <li>
+                <button type="button" class="button m-2">2024-01-03</button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <h2></h2>
+  </div>
+</div>
+
+[[block page_scripts]]
+<!-- Loads the index-specific js for Vue -->
+<script>
+  let my_callback_url = "[[=XML(my_callback_url)]]";
+</script>
+<script src="js/index.js"></script>
+[[end]]
