@@ -11,12 +11,36 @@
   <h1 class="title is-1">Statistics</h1>
   <div>
     <div><h2 class="subtitle is-2">User Information</h2></div>
-    <div class="is-flex">
+    <div>
       <div class="card m-2 p-4">
         <h3 class="subtitle is-3"># of Bird Sightings over Time</h3>
+        <table>
+          <tr>
+            <th>Date</th>
+            <th>&nbsp;&nbsp;&nbsp;&nbsp;# of Sightings</th>
+          </tr>
+          [[ for day, count in sightingsByDay.items() : ]]
+          <tr>
+            <td>[[=day]]</td>
+            <td>[[=count]]</td>
+          </tr>
+          [[ pass ]]
+        </table>
       </div>
       <div class="card m-2 p-4">
         <h3 class="subtitle is-3">Time Spent</h3>
+        <table>
+          <tr>
+            <th>Date</th>
+            <th>&nbsp;&nbsp;&nbsp;&nbsp; Minutes</th>
+          </tr>
+          [[ for day, time in timeByDay.items() : ]]
+          <tr>
+            <td>[[=day]]</td>
+            <td>[[=time]]</td>
+          </tr>
+          [[ pass ]]
+        </table>
       </div>
       <div class="card m-2 p-4">
         <h3 class="subtitle is-3">Heat Map</h3>
@@ -25,33 +49,24 @@
     <hr class="is-divider" />
     <div>
       <h2 class="subtitle is-2">Species Seen:</h2>
-      <form class="is-flex m-2 mb-4">
-        <input
-          class="input is-primary mr-2"
-          type="text"
-          placeholder="Looking for a specific species?"
-        />
-        <button class="button is-primary" type="button">Search</button>
-      </form>
+      [[=searchForm]]
+      [[ for species, sightings in speciesSeen.items() : ]]
       <div class="box">
-        <h3 class="subtitle is-3">Golden Peacock</h3>
+        <h3 class="subtitle is-3">[[ =species ]]</h3>
         <div class="box">
           <div>
             Seen:
             <ul class="ml-2 is-flex">
+              [[ for sighting in sightings : ]]
               <li>
-                <button type="button" class="button m-2">2024-01-01</button>
+                <button type="button" class="button m-2">[[ sighting ]]</button>
               </li>
-              <li>
-                <button type="button" class="button m-2">2024-01-02</button>
-              </li>
-              <li>
-                <button type="button" class="button m-2">2024-01-03</button>
-              </li>
+              [[ pass ]]
             </ul>
           </div>
         </div>
       </div>
+      [[ pass ]]
     </div>
   </div>
   <div>

@@ -25,7 +25,7 @@ session, db, T, auth, and tempates are examples of Fixtures.
 Warning: Fixtures MUST be declared with @action.uses({fixtures}) else your app will result in undefined behavior
 """
 
-from py4web import action, request, abort, redirect, URL
+from py4web import action, request, abort, redirect, URL, Field
 from yatl.helpers import A
 from .common import (
     db,
@@ -39,6 +39,8 @@ from .common import (
     flash,
 )
 from py4web.utils.url_signer import URLSigner
+from py4web.utils.form import Form, FormStyleBulma
+from pydal.validators import *
 from .models import get_user_email
 
 url_signer = URLSigner(session)
@@ -56,8 +58,53 @@ def index():
 @action("statistics")
 @action.uses("statistics.html", db, auth, url_signer)
 def statistics():
+    if not auth.current_user:
+        redirect(URL("index"))
+    # Get list of all sightings by the user
+    id = db(
+        db.auth_user.email == get_user_email()
+    ).select().first().id
+    events = db(
+        db.checklist.observer_id == auth.current_user.get("id"),
+    ).select().sort(lambda row: row.date).as_list()
+    # Sightings by day
+    sightingsByDay = {}
+    for event in events:
+        date = event["date"].date()
+        if date not in sightingsByDay:
+            sightingsByDay[date] = 0
+        sightingsByDay[date] += 1
+
+    # Species Seen and When
+    speciesSeen = {}
+    for event in events:
+        species = event["common_name"]
+        date = event["date"].date()
+        if species not in speciesSeen:
+            speciesSeen[species] = []
+        speciesSeen[species].append(date)
+
+
+    # Time spent bird watching by day
+    timeByDay = {}
+    for event in events:
+        date = event["date"].date()
+        if date not in timeByDay:
+            timeByDay[date] = 0
+        timeByDay[date] += event["duration_minutes"]
+
+    searchForm = Form(
+        [
+            Field("Search", "string", requires=IS_NOT_EMPTY()),
+        ],
+        formstyle=FormStyleBulma,
+    )
     return dict(
         # COMPLETE: return here any signed URLs you need.
+        sightingsByDay=sightingsByDay,
+        timeByDay=timeByDay,
+        speciesSeen=speciesSeen,
+        searchForm=searchForm,
         my_callback_url=URL("my_callback", signer=url_signer),
     )
 
