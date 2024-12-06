@@ -61,12 +61,10 @@ def statistics():
     if not auth.current_user:
         redirect(URL("index"))
     # Get list of all sightings by the user
-    id = db(
-        db.auth_user.email == get_user_email()
-    ).select().first().id
     events = db(
-        db.checklist.observer_id == auth.current_user.get("id"),
+        db.checklist.observer_id == auth.current_user.get("id")
     ).select().sort(lambda row: row.date).as_list()
+
     # Sightings by day
     sightingsByDay = {}
     for event in events:
@@ -78,12 +76,14 @@ def statistics():
     # Species Seen and When
     speciesSeen = {}
     for event in events:
-        species = event["common_name"]
+        event_id = event["event_id"]
         date = event["date"].date()
+        species = db(
+            db.sighting.event_id == event_id,
+        ).select().first().common_name
         if species not in speciesSeen:
             speciesSeen[species] = []
         speciesSeen[species].append(date)
-
 
     # Time spent bird watching by day
     timeByDay = {}

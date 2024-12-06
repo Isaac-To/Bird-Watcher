@@ -22,7 +22,7 @@
           [[ for day, count in sightingsByDay.items() : ]]
           <tr>
             <td>[[=day]]</td>
-            <td>[[=count]]</td>
+            <td>&nbsp;&nbsp;&nbsp;&nbsp;[[=count]]</td>
           </tr>
           [[ pass ]]
         </table>
@@ -37,7 +37,7 @@
           [[ for day, time in timeByDay.items() : ]]
           <tr>
             <td>[[=day]]</td>
-            <td>[[=time]]</td>
+            <td>&nbsp;&nbsp;&nbsp;&nbsp;[[=time]]</td>
           </tr>
           [[ pass ]]
         </table>
@@ -59,7 +59,7 @@
             <ul class="ml-2 is-flex">
               [[ for sighting in sightings : ]]
               <li>
-                <button type="button" class="button m-2">[[ sighting ]]</button>
+                <button type="button" class="button m-2">[[ =sighting ]]</button>
               </li>
               [[ pass ]]
             </ul>
