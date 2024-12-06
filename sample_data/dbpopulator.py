@@ -14,7 +14,7 @@ if __name__ == "__main__":
             event[0][1:],
             event[1],
             event[2],
-            event[3] + ":" + event[4],
+            event[3] + " " + event[4],
             event[5][3:],
             event[6],
         )
