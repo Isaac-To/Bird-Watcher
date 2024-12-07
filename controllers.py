@@ -27,22 +27,72 @@ Warning: Fixtures MUST be declared with @action.uses({fixtures}) else your app w
 
 from py4web import action, request, abort, redirect, URL
 from yatl.helpers import A
-from .common import db, session, T, cache, auth, logger, authenticated, unauthenticated, flash
+from .common import (
+    db,
+    session,
+    T,
+    cache,
+    auth,
+    logger,
+    authenticated,
+    unauthenticated,
+    flash,
+)
 from py4web.utils.url_signer import URLSigner
 from .models import get_user_email
+from statistics import median
 
 url_signer = URLSigner(session)
 
-@action('index')
-@action.uses('index.html', db, auth, url_signer)
+
+@action("index")
+@action.uses("index.html", db, auth, url_signer)
 def index():
+    names = map(
+        lambda row: row.name,
+        db(db.species).select(db.species.name, orderby=db.species.name),
+    )
     return dict(
-        # COMPLETE: return here any signed URLs you need.
-        my_callback_url = URL('my_callback', signer=url_signer),
+        speciesList='["' + '","'.join(names) + '"]',
+        # my_callback_url = URL('my_callback', signer=url_signer),
     )
 
-@action('my_callback')
-@action.uses() # Add here things like db, auth, etc.
-def my_callback():
-    # The return value should be a dictionary that will be sent as JSON.
-    return dict(my_value=3)
+
+@action("sightings")
+@action.uses(db)
+def get_sightings():
+    # Get filters
+    filterString = request.query.get("s", "").upper()
+    filterList = request.query.get("l")
+    if filterList != None:
+        filterList = filterList.split(",")
+
+    def filterIncludes(species):
+        return filterString in species.upper() and (
+            filterList == None or species in filterList
+        )
+
+    # Get all sightings and their coordinates
+    rows = db(
+        (db.sighting.event_id == db.checklist.event_id)
+        & filterIncludes(db.sighting.common_name)
+    ).iterselect(
+        db.checklist.latitude,
+        db.checklist.longitude,
+        db.sighting.count,
+        db.sighting.common_name,
+    )
+
+    # Sum all sighting counts at each coord
+    totalSightings = {}
+    for row in rows:
+        if filterIncludes(row.sighting.common_name):
+            latlng = (
+                round(row.checklist.latitude, 5),
+                round(row.checklist.longitude, 5),
+            )
+            totalSightings[latlng] = totalSightings.get(latlng, 0) + row.sighting.count
+
+    # Serve list of [lat, lng, count]
+    result = map(lambda pair: [pair[0][0], pair[0][1], pair[1]], totalSightings.items())
+    return dict(sightings=result)

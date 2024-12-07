@@ -181,9 +181,78 @@ app.mapClicked = function (event) {
 
 app.data = {
   data: function () {
-    return {};
+    return {
+      filterString: "",
+      filterList: [],
+      speciesList: speciesList,
+      sightingsPromise: undefined,
+    };
   },
-  methods: {},
+  methods: {
+    includesFilterString: function (species) {
+      return species.toUpperCase().includes(this.filterString.toUpperCase());
+    },
+
+    clearFilter: function () {
+      this.filterString = "";
+      this.filterList = [];
+      requestAnimationFrame(this.updateFilter);
+    },
+
+    startUpdateFilter: function () {
+      if (this.updateFilterTimeout !== undefined)
+        clearTimeout(this.updateFilterTimeout);
+
+      this.updateFilterTimeout = setTimeout(this.updateFilter, 500);
+    },
+
+    updateFilter: function () {
+      this.updateFilterTimeout = undefined;
+      this.fetchSightings();
+    },
+
+    fetchSightings: function () {
+      if (this.sightingsPromise) {
+        this.sightingsPromise.abort();
+      }
+
+      // Generate search params
+      const params = new URLSearchParams();
+      if (this.filterString !== "") params.append("s", this.filterString);
+      if (
+        this.filterList.length > 0 &&
+        this.filterList.some(this.includesFilterString)
+      )
+        params.append("l", this.filterList.join(","));
+
+      // The filter may be changed mid request, so include a way to abort
+      const requestAborter = new AbortController();
+
+      // Request sightings from the server
+      const thisPromise = axios(sightings_url, {
+        signal: requestAborter.signal,
+        params: params,
+      }).then((response) => {
+        if (thisPromise !== this.sightingsPromise) return;
+
+        const sightings = response.data.sightings;
+        app.heat.setLatLngs(sightings);
+
+        // Find median to compute a nice heatmap max
+        sightings.sort((a, b) => b[2] - a[2]);
+        if (sightings.length > 0) {
+          const median = sightings[Math.floor(sightings.length / 2)][2];
+          const max = sightings[0][2];
+          app.heat.setOptions({ max: Math.min(2 * median, max) });
+        }
+
+        this.sightingsPromise = undefined;
+      });
+
+      thisPromise.abort = requestAborter.abort.bind(requestAborter);
+      this.sightingsPromise = thisPromise;
+    },
+  },
 };
 
 app.vue = Vue.createApp(app.data).mount("#app");
@@ -211,11 +280,12 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 // Add heatmap, populating it with sighting data
 app.heat = L.heatLayer([]).addTo(app.map);
+app.vue.fetchSightings();
 
 // Zoom in on user's approximate location
 axios("https://geolocation-db.com/json/").then((res) => {
   const lat = res.data.latitude;
   const lng = res.data.longitude;
 
-  app.map.flyTo([lat, lng], 10);
+  app.map.flyTo([lat, lng], 10, { animate: false });
 });

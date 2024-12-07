@@ -8,7 +8,47 @@
 
 <div class="section" id="app" v-cloak>
   <h1 class="title"><i class="fa fa-solid fa-location-arrow"></i> Map</h1>
-  <div id="map" style="height: 500px"></div>
+  <div class="columns is-vcentered">
+
+    <div class="column is-narrow">
+      <div class="box">
+
+        <!-- Species input -->
+        <div class="field">
+          <label class="label">Filter by Species</label>
+          <div class="control" :class="{ 'is-loading': sightingsPromise !== undefined }">
+            <input class="input"
+              type="text"
+              placeholder="Species Name"
+              v-model="filterString"
+              @input="startUpdateFilter"/>
+          </div>
+        </div>
+
+        <!-- Species selection dropdown -->
+        <div class="field">
+          <div class="control">
+            <div class="select is-multiple" style="min-width: 25vw;">
+              <select multiple size="10" v-model="filterList" @change="startUpdateFilter">
+                <template v-for="species in speciesList">
+                  <option :hidden="!includesFilterString(species)">{{species}}</option>
+                </template>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clear button -->
+        <button class="button is-danger" @click="clearFilter">Clear</button>
+
+      </div>
+    </div>
+
+    <div class="column">
+      <div id="map" style="height: 500px"></div>
+    </div>
+
+  </div>
 </div>
 
 
@@ -23,6 +63,8 @@
 <script>
   let checklist_url = "[[=URL('checkist')]]";
   let statistics_url = "[[=URL('statistics')]]";
+  let sightings_url = "[[=URL('sightings')]]";
+  let speciesList = [[=XML(speciesList)]];
 </script>
 <script src="js/index.js"></script>
 [[end]]
