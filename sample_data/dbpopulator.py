@@ -1,5 +1,6 @@
 import sqlite3
 import csv
+import datetime
 
 if __name__ == "__main__":
     checklist = csv.reader(open("app/Bird-Watcher/sample_data/checklists.csv"), delimiter=",")
@@ -14,9 +15,9 @@ if __name__ == "__main__":
             event[0][1:],
             event[1],
             event[2],
-            event[3] + " " + event[4],
+            event[3] + " " + (event[4] or "12:00:00"),
             event[5][3:],
-            event[6],
+            None if event[6] == '' else event[6],
         )
         # print(event)
         cursor.execute(
@@ -29,7 +30,7 @@ if __name__ == "__main__":
         sighting = (
             sighting[0][1:],
             sighting[1],
-            sighting[2],
+            1 if sighting[2] == 'X' else sighting[2],
         )
         cursor.execute(
             """INSERT INTO sighting(event_id, common_name, count)
