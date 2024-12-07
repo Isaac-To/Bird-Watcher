@@ -7,9 +7,7 @@ app.redirectChecklist = function (latlng) {
   const query =
     "?lat=" + latlng.lat.toFixed(5) + "&lng=" + latlng.lng.toFixed(5);
 
-  // Temporary until checklist page is implemented
-  // location.assign(...)
-  console.log("Redirect to checklist: " + query);
+  location.assign(checklist_url + query);
 
   app.closePopup();
 };
@@ -30,9 +28,7 @@ app.redirectStatistics = function (fromlatlng, tolatlng) {
     "&w=" +
     west.toFixed(5);
 
-  // Temporary until statistics page is implemented
-  // location.assign(...)
-  console.log("Redirect to statistics: " + query);
+  location.assign(statistics_url + query);
 
   app.closePopup();
 };
@@ -119,11 +115,12 @@ app.openStats = function (latlng) {
 
 // Remove the statistics rectangle, if it exists
 app.closeStats = function () {
-  if (app.statistics) {
-    app.statistics.popup.close();
-    app.statistics.rect.remove();
-    app.statistics.minHandle.remove();
-    app.statistics.maxHandle.remove();
+  const stats = app.statistics;
+  if (stats) {
+    stats.popup.close();
+    stats.rect.remove();
+    stats.minHandle.remove();
+    stats.maxHandle.remove();
     app.statistics = undefined;
   }
 };
@@ -203,6 +200,8 @@ app.map = L.map("map", {
   center: [38, -98],
   zoom: 4,
 });
+app.map.on("click", app.mapClicked);
+app.map.on("blur", app.closePopup);
 
 // Add street map
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -210,8 +209,8 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 }).addTo(app.map);
 
-app.map.on("click", app.mapClicked);
-app.map.on("blur", app.closePopup);
+// Add heatmap, populating it with sighting data
+app.heat = L.heatLayer([]).addTo(app.map);
 
 // Zoom in on user's approximate location
 axios("https://geolocation-db.com/json/").then((res) => {
