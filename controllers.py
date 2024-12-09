@@ -73,17 +73,36 @@ def statistics():
             sightingsByDay[date] = 0
         sightingsByDay[date] += 1
 
+    searchForm = Form(
+        [
+            Field("Search", "string", requires=IS_NOT_EMPTY()),
+        ],
+        formstyle=FormStyleBulma,
+    )
+
+    searchTerm = ""
+    if searchForm.accepted:
+        searchTerm = searchForm.vars.get("Search")
+
     # Species Seen and When
     speciesSeen = {}
     for event in events:
         event_id = event["event_id"]
         date = event["date"].date()
-        species = db(
-            db.sighting.event_id == event_id,
-        ).select().first().common_name
-        if species not in speciesSeen:
-            speciesSeen[species] = []
-        speciesSeen[species].append(date)
+        if searchTerm != "":
+            species = db(
+                (db.sighting.event_id == event_id) &
+                (db.sighting.common_name.contains(searchTerm))
+            ).select().first()
+        else:
+            species = db(
+                db.sighting.event_id == event_id
+            ).select().first()
+        if species == None:
+            continue
+        if species.common_name not in speciesSeen:
+            speciesSeen[species.common_name] = []
+        speciesSeen[species.common_name].append(date)
 
     # Time spent bird watching by day
     timeByDay = {}
@@ -93,12 +112,6 @@ def statistics():
             timeByDay[date] = 0
         timeByDay[date] += event["duration_minutes"]
 
-    searchForm = Form(
-        [
-            Field("Search", "string", requires=IS_NOT_EMPTY()),
-        ],
-        formstyle=FormStyleBulma,
-    )
     return dict(
         # COMPLETE: return here any signed URLs you need.
         sightingsByDay=sightingsByDay,
