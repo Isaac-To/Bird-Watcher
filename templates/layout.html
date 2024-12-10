@@ -1,27 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <base href="[[=URL('static')]]/">
+    <!-- Ensure the base URL is correct -->
+    <base href="/Bird-Watcher/static/">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="shortcut icon" href="data:image/x-icon;base64,AAABAAEAAQEAAAEAIAAwAAAAFgAAACgAAAABAAAAAgAAAAEAIAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAAAAA=="/>
+
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="css/bulma.css">
     <link rel="stylesheet" href="font-awesome-4.7.0/css/font-awesome.css">
-    <!-- <link rel="stylesheet" href="fontawesome-free-6.5.1-web/css/fontawesome.css">
-    <link rel="stylesheet" href="fontawesome-free-6.5.1-web/css/brands.css">
-    <link rel="stylesheet" href="fontawesome-free-6.5.1-web/css/solid.css"> -->
-    [[block page_head]]<!-- individual pages can customize header here -->[[end]]
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- JavaScript for Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Allow individual pages to add head content -->
+    [[block page_head]]<!-- Individual pages can customize header here -->[[end]]
   </head>
   <body>
     <!-- Navigation bar -->
     <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
         <a class="navbar-item" href="[[=URL('index')]]">
-          Learn py4web
-          <!-- <img class="logo" width="150" src="images/site_icon.png"> -->
+          Bird-Watcher
         </a>
-
-
         <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="the-navbar-menu"
            onclick="this.classList.toggle('is-active');document.getElementById(this.dataset.target).classList.toggle('is-active');">
           <span aria-hidden="true"></span>
@@ -32,7 +35,7 @@
 
       <div id="the-navbar-menu" class="navbar-menu">
         <div class="navbar-start">
-          [[block page_menu_items]]<!-- individual pages can add menu items here -->[[end]]
+          [[block page_menu_items]]<!-- Individual pages can add menu items here -->[[end]]
         </div>
 
         <div class="navbar-end">
@@ -46,8 +49,7 @@
                   <div class="navbar-dropdown">
                     <a class="navbar-item" href="[[=URL('auth/logout')]]">Logout</a>
                     <a class="navbar-item" href="[[=URL('auth/profile')]]">Profile</a>
-                    <a class="navbar-item" href="[[=URL('auth/change_password')]]">Change Password</a></li>
-
+                    <a class="navbar-item" href="[[=URL('auth/change_password')]]">Change Password</a>
                   </div>
                 </div>
               [[else:]]
@@ -60,9 +62,9 @@
       </div>
     </nav>
 
-    <!-- beginning of HTML inserted by extending template -->
+    <!-- Main content inserted by extending template -->
     [[include]]
-    <!-- end of HTML inserted by extending template -->
+
     <footer class="footer">
       <div class="content has-text-centered">
         Made with <a href="https://py4web.com">py4web</a>.
@@ -70,10 +72,15 @@
       </div>
     </footer>
   </body>
+
+  <!-- JavaScript files -->
   <script src="js/sugar.min.js"></script>
   <script src="js/axios.min.js"></script>
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.min.js"></script> -->
-  <script src="js/vue3.js"></script> 
+  <script src="js/vue3.js"></script>
   <script src="js/utils.js"></script>
-  [[block page_scripts]]<!-- individual pages can add scripts here -->[[end]]
+
+  <!-- Allow individual pages to add additional scripts -->
+  [[block page_scripts]]
+  <script src="js/index.js"></script>
+  <!-- Individual pages can add scripts here -->[[end]]
 </html>

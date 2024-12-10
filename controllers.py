@@ -33,16 +33,104 @@ from .models import get_user_email
 
 url_signer = URLSigner(session)
 
+@action('default')
+@action.uses(db, auth)
+def default():
+    return redirect(URL('index'))
+
 @action('index')
 @action.uses('index.html', db, auth, url_signer)
 def index():
     return dict(
-        # COMPLETE: return here any signed URLs you need.
-        my_callback_url = URL('my_callback', signer=url_signer),
+        species_url=URL('api/species_by_region', signer=url_signer),
+        trends_url=URL('api/species_trends', signer=url_signer),
+        contributors_url=URL('api/top_contributors', signer=url_signer),
     )
 
-@action('my_callback')
-@action.uses() # Add here things like db, auth, etc.
-def my_callback():
-    # The return value should be a dictionary that will be sent as JSON.
-    return dict(my_value=3)
+@action('api/species_by_region')
+@action.uses(db, auth.user)
+def species_by_region():
+    # Required parameters: latitude and longitude
+    latitude = request.params.get('latitude')
+    longitude = request.params.get('longitude')
+    if not latitude or not longitude:
+        return dict(error="Latitude and longitude are required")
+    
+    try:
+        latitude = float(latitude)
+        longitude = float(longitude)
+    except ValueError:
+        return dict(error="Invalid latitude or longitude format")
+    
+    # Query species and counts for the given region
+    species_data = db.executesql("""
+        SELECT s.common_name, SUM(s.count) AS total_count
+        FROM sighting s
+        JOIN checklist c ON s.event_id = c.event_id
+        WHERE c.latitude BETWEEN ? AND ?
+          AND c.longitude BETWEEN ? AND ?
+        GROUP BY s.common_name
+        """, 
+        [latitude - 0.1, latitude + 0.1, longitude - 0.1, longitude + 0.1])
+    
+    return dict(data=species_data)
+
+@action('api/species_trends')
+@action.uses(db, auth.user)
+def species_trends():
+    # Required parameters: species_name, latitude, longitude
+    species_name = request.params.get('species_name')
+    latitude = request.params.get('latitude')
+    longitude = request.params.get('longitude')
+    if not species_name or not latitude or not longitude:
+        return dict(error="Missing parameters")
+    
+    try:
+        latitude = float(latitude)
+        longitude = float(longitude)
+    except ValueError:
+        return dict(error="Invalid latitude or longitude format")
+    
+    # Query trends data
+    trends = db.executesql("""
+        SELECT c.date, SUM(s.count) AS total_count
+        FROM sighting s
+        JOIN checklist c ON s.event_id = c.event_id
+        WHERE s.common_name = ?
+          AND c.latitude BETWEEN ? AND ?
+          AND c.longitude BETWEEN ? AND ?
+        GROUP BY c.date
+        ORDER BY c.date
+        """, 
+        [species_name, latitude - 0.1, latitude + 0.1, longitude - 0.1, longitude + 0.1])
+    
+    return dict(data=trends)
+
+@action('api/top_contributors')
+@action.uses(db, auth.user)
+def top_contributors():
+    # Required parameters: latitude and longitude
+    latitude = request.params.get('latitude')
+    longitude = request.params.get('longitude')
+    if not latitude or not longitude:
+        return dict(error="Latitude and longitude are required")
+    
+    try:
+        latitude = float(latitude)
+        longitude = float(longitude)
+    except ValueError:
+        return dict(error="Invalid latitude or longitude format")
+    
+    # Query top contributors
+    contributors = db.executesql("""
+        SELECT c.observer_id, COUNT(c.event_id) AS checklist_count
+        FROM checklist c
+        WHERE c.latitude BETWEEN ? AND ?
+          AND c.longitude BETWEEN ? AND ?
+        GROUP BY c.observer_id
+        ORDER BY checklist_count DESC
+        LIMIT 5
+        """, 
+        [latitude - 0.1, latitude + 0.1, longitude - 0.1, longitude + 0.1])
+    
+    return dict(data=contributors)
