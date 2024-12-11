@@ -45,24 +45,26 @@ def index():
         species_url=URL('api/species_by_region', signer=url_signer),
         trends_url=URL('api/species_trends', signer=url_signer),
         contributors_url=URL('api/top_contributors', signer=url_signer),
+        check_login_url=URL('api/check_login', signer=url_signer),
     )
+
 
 @action('api/species_by_region')
 @action.uses(db, auth.user)
 def species_by_region():
-    # Required parameters: latitude and longitude
     latitude = request.params.get('latitude')
     longitude = request.params.get('longitude')
+
+    # Avoid redundant checks
     if not latitude or not longitude:
         return dict(error="Latitude and longitude are required")
-    
+
     try:
         latitude = float(latitude)
         longitude = float(longitude)
     except ValueError:
         return dict(error="Invalid latitude or longitude format")
-    
-    # Query species and counts for the given region
+
     species_data = db.executesql("""
         SELECT s.common_name, SUM(s.count) AS total_count
         FROM sighting s
@@ -70,15 +72,14 @@ def species_by_region():
         WHERE c.latitude BETWEEN ? AND ?
           AND c.longitude BETWEEN ? AND ?
         GROUP BY s.common_name
-        """, 
+        """,
         [latitude - 0.1, latitude + 0.1, longitude - 0.1, longitude + 0.1])
     
     return dict(data=species_data)
 
 @action('api/species_trends')
-@action.uses(db, auth.user)
+@action.uses(db, auth.user)  # Enforce login
 def species_trends():
-    # Required parameters: species_name, latitude, longitude
     species_name = request.params.get('species_name')
     latitude = request.params.get('latitude')
     longitude = request.params.get('longitude')
@@ -91,7 +92,6 @@ def species_trends():
     except ValueError:
         return dict(error="Invalid latitude or longitude format")
     
-    # Query trends data
     trends = db.executesql("""
         SELECT c.date, SUM(s.count) AS total_count
         FROM sighting s
@@ -107,11 +107,14 @@ def species_trends():
     return dict(data=trends)
 
 @action('api/top_contributors')
-@action.uses(db, auth.user)
+@action.uses(db, auth.user)  # Enforce login
 def top_contributors():
-    # Required parameters: latitude and longitude
     latitude = request.params.get('latitude')
     longitude = request.params.get('longitude')
+    
+    # Log the received parameters
+    print(f"INFO: Received API request - Latitude: {latitude}, Longitude: {longitude}")
+    
     if not latitude or not longitude:
         return dict(error="Latitude and longitude are required")
     
@@ -121,7 +124,6 @@ def top_contributors():
     except ValueError:
         return dict(error="Invalid latitude or longitude format")
     
-    # Query top contributors
     contributors = db.executesql("""
         SELECT c.observer_id, COUNT(c.event_id) AS checklist_count
         FROM checklist c
@@ -134,3 +136,11 @@ def top_contributors():
         [latitude - 0.1, latitude + 0.1, longitude - 0.1, longitude + 0.1])
     
     return dict(data=contributors)
+
+@action('api/check_login')
+@action.uses(auth)
+def check_login():
+    logger.info("check_login endpoint accessed")
+    user_email = get_user_email()
+    return dict(logged_in=user_email is not None)
+
