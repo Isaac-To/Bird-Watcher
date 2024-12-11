@@ -17,6 +17,7 @@ app.data = {
                 species: false,
                 contributors: false,
             },
+            chart: null,
         };
     },
     methods: {
@@ -55,59 +56,44 @@ app.data = {
             this.loadTrends(speciesName);
         },
         loadSpeciesList: function () {
-            if (this.apiInProgress.species) return;
             if (!this.isLoggedIn) {
                 alert("Please log in to view species data.");
                 return;
             }
-
             console.log("Making API request for species list.");
-            const url = `${species_url}?latitude=${this.latitude}&longitude=${this.longitude}`;
-            this.apiInProgress.species = true;
-
-            axios.get(url)
+            axios.get(`${species_url}?latitude=${this.latitude}&longitude=${this.longitude}`)
                 .then((response) => {
-                    console.log("Species list loaded:", response.data);
+                    console.log("Species list response:", response.data);
                     this.speciesList = response.data.data || [];
                 })
                 .catch((error) => {
                     console.error("Error loading species list:", error);
-                })
-                .finally(() => {
-                    this.apiInProgress.species = false;
                 });
         },
+                
+        
         loadContributors: function () {
-            if (this.apiInProgress.contributors) return;
             if (!this.isLoggedIn) {
                 alert("Please log in to view contributors.");
                 return;
             }
-
             console.log("Making API request for contributors.");
-            const url = `${contributors_url}?latitude=${encodeURIComponent(this.latitude)}&longitude=${encodeURIComponent(this.longitude)}`;
-            this.apiInProgress.contributors = true;
-
-            axios.get(url)
+            axios.get(`${contributors_url}?latitude=${this.latitude}&longitude=${this.longitude}`)
                 .then((response) => {
-                    console.log("Contributors data loaded:", response.data);
+                    console.log("Contributors response:", response.data);
                     this.contributors = response.data.data || [];
                 })
                 .catch((error) => {
                     console.error("Error loading contributors data:", error);
-                })
-                .finally(() => {
-                    this.apiInProgress.contributors = false;
                 });
-        },
+        },                     
         loadTrends: function (speciesName) {
             if (!this.isLoggedIn) {
                 alert("Please log in to view trends data.");
                 return;
             }
-
             console.log("Loading trends for species:", speciesName);
-            axios.get(trends_url, {
+            axios.get(`${trends_url}`, {
                 params: {
                     latitude: this.latitude,
                     longitude: this.longitude,
@@ -115,18 +101,26 @@ app.data = {
                 },
             })
             .then((response) => {
-                console.log("Trends data loaded:", response.data);
+                console.log("Trends data response:", response.data);
                 this.trendsData = response.data.data || [];
             })
             .catch((error) => {
                 console.error("Error loading trends data:", error);
             });
-        },
+        },              
     },
     mounted: function () {
         console.log("Checking login status...");
         this.checkLoginStatus();
     },
+    watch: {
+        speciesList: function (newVal) {
+            console.log("Updated speciesList in parent:", newVal);
+        },
+        contributors: function (newVal) {
+            console.log("Updated contributors in parent:", newVal);
+        },
+    },    
 };
 
 app.components = {
@@ -152,46 +146,114 @@ app.components = {
                     :key="species.common_name" 
                     @click="$emit('species-selected', species.common_name)"
                 >
-                    {{ species.common_name }} ({{ species.total_count }} sightings)
-                </li>
+                {{ species.common_name }} ({{ species.total_count || 0 }} sightings)
+            </li>
+        
             </ul>
         `,
     },    
     'graph-visualization': {
         props: ['trendsData', 'speciesName'],
+        data() {
+            return {
+                chart: null, // Hold the chart instance here
+            };
+        },
         methods: {
             renderGraph() {
-                const labels = this.trendsData.map((row) => row.date);
-                const values = this.trendsData.map((row) => row.total_count);
-                new Chart(this.$refs.canvas, {
-                    type: "line",
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: `Sightings for ${this.speciesName}`,
-                                data: values,
+                // Ensure trendsData exists and has data
+                if (!this.trendsData || this.trendsData.length === 0) {
+                    console.warn("No trends data to display.");
+                    return;
+                }
+    
+                try {
+                    const labels = this.trendsData.map((row) => row.date);
+                    const values = this.trendsData.map((row) => row.total_count);
+    
+                    // Destroy any existing chart to avoid duplicates
+                    if (this.chart) {
+                        this.chart.destroy();
+                    }
+    
+                    // Ensure the canvas element exists
+                    const canvas = this.$refs.canvas;
+                    if (!canvas) {
+                        console.error("Canvas element not found.");
+                        return;
+                    }
+    
+                    const ctx = canvas.getContext("2d");
+                    this.chart = new Chart(ctx, {
+                        type: "line",
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: `Sightings for ${this.speciesName}`,
+                                    data: values,
+                                    borderColor: "blue",
+                                    backgroundColor: "rgba(0, 0, 255, 0.1)",
+                                    fill: true,
+                                },
+                            ],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: "Date",
+                                    },
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: "Sightings",
+                                    },
+                                },
                             },
-                        ],
-                    },
-                });
+                        },
+                    });
+                } catch (error) {
+                    console.error("Error rendering the graph:", error);
+                }
             },
         },
-        watch: {
-            trendsData: 'renderGraph',
+        mounted() {
+            // Render the graph initially if trendsData already exists
+            if (this.trendsData && this.trendsData.length > 0) {
+                this.renderGraph();
+            }
         },
-        template: `<canvas ref="canvas"></canvas>`,
-    },
+        watch: {
+            trendsData: {
+                handler: "renderGraph",
+                immediate: true, // Call handler immediately upon initial load
+            },
+        },
+        template: `<div>
+            <canvas ref="canvas"></canvas>
+        </div>`,
+        unmounted() {
+            // Destroy the chart when the component is unmounted
+            if (this.chart) {
+                this.chart.destroy();
+            }
+        },
+    },                  
     'top-contributors': {
         props: ['contributors'],
         template: `
             <ul>
                 <li v-for="contributor in contributors" :key="contributor.observer_id">
-                    Observer {{ contributor.observer_id }} - {{ contributor.checklist_count }} checklists
+                    Observer {{ contributor.observer_id }} - {{ contributor.checklist_count || 0 }} checklists
                 </li>
             </ul>
         `,
-    },
+    },    
 };
 
 app.vue = Vue.createApp(app.data);

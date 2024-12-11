@@ -2,11 +2,11 @@ import sqlite3
 import csv
 
 if __name__ == "__main__":
-    checklist = csv.reader(open("app/Bird-Watcher/sample_data/checklists.csv"), delimiter=",")
-    sightings = csv.reader(open("app/Bird-Watcher/sample_data/sightings.csv"), delimiter=",")
-    species = csv.reader(open("app/Bird-Watcher/sample_data/species.csv"), delimiter=",")
+    checklist = csv.reader(open("/Users/nijtandel/Bird-Watcher/sample_data/checklists.csv"), delimiter=",")
+    sightings = csv.reader(open("/Users/nijtandel/Bird-Watcher/sample_data/sightings.csv"), delimiter=",")
+    species = csv.reader(open("/Users/nijtandel/Bird-Watcher/sample_data/species.csv"), delimiter=",")
 
-    conn = sqlite3.connect("app/Bird-Watcher/databases/storage.db")
+    conn = sqlite3.connect("/Users/nijtandel/Bird-Watcher/databases/storage.db")
     cursor = conn.cursor()
 
     for event in list(checklist)[1:]:
@@ -18,7 +18,6 @@ if __name__ == "__main__":
             event[5][3:],
             event[6],
         )
-        # print(event)
         cursor.execute(
             """INSERT INTO checklist(event_id, latitude, longitude, date, observer_id, duration_minutes)
             VALUES (?, ?, ?, ?, ?, ?)""",
@@ -38,10 +37,14 @@ if __name__ == "__main__":
         )
 
     for bird in list(species)[1:]:
-        cursor.execute(
-            """INSERT INTO species(name)
-            VALUES (?)""",
-            bird,
-        )
+        # Check if the species already exists
+        cursor.execute("SELECT name FROM species WHERE name = ?", bird)
+        if cursor.fetchone() is None:
+            cursor.execute(
+                """INSERT INTO species(name)
+                VALUES (?)""",
+                bird,
+            )
 
     conn.commit()
+    conn.close()
