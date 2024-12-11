@@ -87,7 +87,7 @@ def statistics():
     if searchForm.accepted:
         searchTerm = searchForm.vars.get("Search")
 
-    # Species Seen and When
+    # Species Seen, When, Where
     speciesSeen = {}
     for event in events:
         event_id = event["event_id"]
@@ -105,7 +105,7 @@ def statistics():
             continue
         if species.common_name not in speciesSeen:
             speciesSeen[species.common_name] = []
-        speciesSeen[species.common_name].append(date)
+        speciesSeen[species.common_name].append((date, (event["latitude"], event["longitude"])))
 
     # Time spent bird watching by day
     timeByDay = {}

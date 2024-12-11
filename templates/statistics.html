@@ -51,28 +51,39 @@
       <h2 class="subtitle is-2">Species Seen:</h2>
       [[=searchForm]]
       [[ for species, sightings in speciesSeen.items() : ]]
-      <div class="box">
+      <div class="box" id="[[=species]]">
         <h3 class="subtitle is-3">[[ =species ]]</h3>
-        <div class="box">
-          <div>
-            Seen:
-            <ul class="ml-2 is-flex">
-              [[ for sighting in sightings : ]]
-              <li>
-                <button type="button" class="button m-2">[[ =sighting ]]</button>
-              </li>
-              [[ pass ]]
-            </ul>
-          </div>
-        </div>
+        <div id="map-container"></div>
+        <ul class="ml-2 is-flex">
+          [[ for date, (longitude, latitude) in sightings : ]]
+          <li>
+            <button type="button" class="button m-2" onclick="showMap('[[=species]]', [[=latitude]], [[=longitude]])">[[ =date ]]</button>
+          </li>
+          [[ pass ]]
+        </ul>
       </div>
       [[ pass ]]
     </div>
   </div>
-  <div>
-    <h2></h2>
-  </div>
 </div>
+<script>
+  function showMap(species, latitude, longitude) {
+    speciesTree = document.getElementById(species);
+    let mapElements = speciesTree.querySelector('#map-container');
+    mapElements.innerHTML = '';
+    let mapElement = document.createElement('div');
+    mapElement.id = 'map';
+    mapElement.style.width = '100%';
+    mapElement.style.height = '20vh';
+    mapElements.appendChild(mapElement);
+    // Create new map instance
+    let map = L.map(mapElement).setView([longitude, latitude], 13);
+    let tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(map);
+    L.marker([longitude, latitude]).addTo(map).bindPopup("Location").openPopup();
+  }
+</script>
 
 [[block page_scripts]]
 <!-- Loads the index-specific js for Vue -->
