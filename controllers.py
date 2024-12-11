@@ -53,9 +53,7 @@ def index():
         lambda row: row.name,
         db(db.species).select(db.species.name, orderby=db.species.name),
     )
-    return dict(
-        speciesList='["' + '","'.join(names) + '"]'
-    )
+    return dict(speciesList='["' + '","'.join(names) + '"]')
 
 
 @action("sightings")
