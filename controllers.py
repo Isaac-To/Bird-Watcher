@@ -25,6 +25,7 @@ session, db, T, auth, and tempates are examples of Fixtures.
 Warning: Fixtures MUST be declared with @action.uses({fixtures}) else your app will result in undefined behavior
 """
 
+import time
 from py4web import action, request, abort, redirect, URL
 from yatl.helpers import A
 from .common import (
@@ -73,14 +74,17 @@ def get_sightings():
         )
 
     # Get all sightings and their coordinates
+    # Cache the result to speed up subsequent searches
     rows = db(
         (db.sighting.event_id == db.checklist.event_id)
         & filterIncludes(db.sighting.common_name)
-    ).iterselect(
+    ).select(
         db.checklist.latitude,
         db.checklist.longitude,
         db.sighting.count,
         db.sighting.common_name,
+        cache = (cache.get, 300),
+        cacheable = True
     )
 
     # Sum all sighting counts at each coord
@@ -92,6 +96,7 @@ def get_sightings():
                 round(row.checklist.longitude, 5),
             )
             totalSightings[latlng] = totalSightings.get(latlng, 0) + row.sighting.count
+
 
     # Serve list of [lat, lng, count]
     result = map(lambda pair: [pair[0][0], pair[0][1], pair[1]], totalSightings.items())

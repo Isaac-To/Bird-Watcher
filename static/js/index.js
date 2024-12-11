@@ -194,9 +194,11 @@ app.data = {
     },
 
     clearFilter: function () {
-      this.filterString = "";
-      this.filterList = [];
-      requestAnimationFrame(this.updateFilter);
+      if (this.filterString !== "" || this.filterList.length > 0) {
+        this.filterString = "";
+        this.filterList = [];
+        requestAnimationFrame(this.updateFilter);
+      }
     },
 
     startUpdateFilter: function () {
@@ -243,7 +245,7 @@ app.data = {
         if (sightings.length > 0) {
           const median = sightings[Math.floor(sightings.length / 2)][2];
           const max = sightings[0][2];
-          app.heat.setOptions({ max: Math.min(2 * median, max) });
+          app.heat.setOptions({ max: Math.min(median, max) });
         }
 
         this.sightingsPromise = undefined;
