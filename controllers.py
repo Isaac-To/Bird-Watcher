@@ -54,8 +54,7 @@ def index():
         db(db.species).select(db.species.name, orderby=db.species.name),
     )
     return dict(
-        speciesList='["' + '","'.join(names) + '"]',
-        # my_callback_url = URL('my_callback', signer=url_signer),
+        speciesList='["' + '","'.join(names) + '"]'
     )
 
 
@@ -68,36 +67,30 @@ def get_sightings():
     if filterList != None:
         filterList = filterList.split(",")
 
-    def filterIncludes(species):
-        return filterString in species.upper() and (
-            filterList == None or species in filterList
-        )
+    filter = True
+    if filterString:
+        filter &= db.sighting.common_name.contains(filterString, case_sensitive=False)
+    if filterList:
+        filter &= db.sighting.common_name.belongs(filterList)
 
     # Get all sightings and their coordinates
-    # Cache the result to speed up subsequent searches
-    rows = db(
-        (db.sighting.event_id == db.checklist.event_id)
-        & filterIncludes(db.sighting.common_name)
-    ).select(
+    totalSightings = db.sighting.count.sum()
+    rows = db((db.sighting.event_id == db.checklist.event_id) & filter).select(
         db.checklist.latitude,
         db.checklist.longitude,
-        db.sighting.count,
-        db.sighting.common_name,
-        cache = (cache.get, 300),
-        cacheable = True
+        totalSightings,
+        groupby=db.sighting.event_id,
+        cache=(cache.get, 300),
+        cacheable=True,
     )
 
-    # Sum all sighting counts at each coord
-    totalSightings = {}
-    for row in rows:
-        if filterIncludes(row.sighting.common_name):
-            latlng = (
-                round(row.checklist.latitude, 5),
-                round(row.checklist.longitude, 5),
-            )
-            totalSightings[latlng] = totalSightings.get(latlng, 0) + row.sighting.count
-
-
     # Serve list of [lat, lng, count]
-    result = map(lambda pair: [pair[0][0], pair[0][1], pair[1]], totalSightings.items())
+    result = map(
+        lambda row: [
+            row.checklist.latitude,
+            row.checklist.longitude,
+            row[totalSightings],
+        ],
+        rows,
+    )
     return dict(sightings=result)
