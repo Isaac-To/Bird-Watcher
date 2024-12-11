@@ -17,9 +17,14 @@
     <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
         <a class="navbar-item" href="[[=URL('index')]]">
-          Learn py4web
+          Home
           <!-- <img class="logo" width="150" src="images/site_icon.png"> -->
         </a>
+        [[if globals().get('user'):]]
+        <a class="navbar-item" href="[[=URL('statistics')]]">
+          My Birding
+        </a>
+        [[pass]]
 
 
         <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="the-navbar-menu"

@@ -25,24 +25,70 @@ session, db, T, auth, and tempates are examples of Fixtures.
 Warning: Fixtures MUST be declared with @action.uses({fixtures}) else your app will result in undefined behavior
 """
 
+import time
 from py4web import action, request, abort, redirect, URL
 from yatl.helpers import A
-from .common import db, session, T, cache, auth, logger, authenticated, unauthenticated, flash
+from .common import (
+    db,
+    session,
+    T,
+    cache,
+    auth,
+    logger,
+    authenticated,
+    unauthenticated,
+    flash,
+)
 from py4web.utils.url_signer import URLSigner
 from .models import get_user_email
+from statistics import median
 
 url_signer = URLSigner(session)
 
-@action('index')
-@action.uses('index.html', db, auth, url_signer)
+
+@action("index")
+@action.uses("index.html", db, auth, url_signer)
 def index():
-    return dict(
-        # COMPLETE: return here any signed URLs you need.
-        my_callback_url = URL('my_callback', signer=url_signer),
+    names = map(
+        lambda row: row.name,
+        db(db.species).select(db.species.name, orderby=db.species.name),
+    )
+    return dict(speciesList='["' + '","'.join(names) + '"]')
+
+
+@action("sightings")
+@action.uses(db)
+def get_sightings():
+    # Get filters
+    filterString = request.query.get("s", "").upper()
+    filterList = request.query.get("l")
+    if filterList != None:
+        filterList = filterList.split(",")
+
+    filter = True
+    if filterString:
+        filter &= db.sighting.common_name.contains(filterString, case_sensitive=False)
+    if filterList:
+        filter &= db.sighting.common_name.belongs(filterList)
+
+    # Get all sightings and their coordinates
+    totalSightings = db.sighting.count.sum()
+    rows = db((db.sighting.event_id == db.checklist.event_id) & filter).select(
+        db.checklist.latitude,
+        db.checklist.longitude,
+        totalSightings,
+        groupby=db.sighting.event_id,
+        cache=(cache.get, 300),
+        cacheable=True,
     )
 
-@action('my_callback')
-@action.uses() # Add here things like db, auth, etc.
-def my_callback():
-    # The return value should be a dictionary that will be sent as JSON.
-    return dict(my_value=3)
+    # Serve list of [lat, lng, count]
+    result = map(
+        lambda row: [
+            row.checklist.latitude,
+            row.checklist.longitude,
+            row[totalSightings],
+        ],
+        rows,
+    )
+    return dict(sightings=result)
