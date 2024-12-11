@@ -77,11 +77,16 @@
     mapElement.style.height = '20vh';
     mapElements.appendChild(mapElement);
     // Create new map instance
+    const markerOptions = {
+      icon: app.handleIcon,
+      keyboard: false,
+      draggable: true,
+    };
     let map = L.map(mapElement).setView([longitude, latitude], 13);
     let tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(map);
-    L.marker([longitude, latitude]).addTo(map).bindPopup("Location").openPopup();
+    L.marker([longitude, latitude], markerOptions).addTo(map).bindPopup("Location").openPopup();
   }
 </script>
 
