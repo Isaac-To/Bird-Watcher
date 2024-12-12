@@ -15,6 +15,7 @@
       <div class="panel">
         <div class="panel-heading">Your Observations Over Time</div>
         <div class="panel-block is-flex">
+          [[ if len(timeByDay) > 0: ]]
           <div class="m-4 has-text-centered">
             <h1 class="is-size-1 has-text-weight-bold">
               [[=round(sum(timeByDay.values())/len(timeByDay), 2)]]
@@ -27,8 +28,15 @@
             </h1>
             sightings per day
           </div>
+          [[ pass ]]
+          [[ else: ]]
+          <h1 class="is-size-5 has-text-weight-bold">
+            No records found
+          </h1>
+          [[ pass ]]
         </div>
         <div class="panel-block">
+          [[ if len(timeByDay) > 0: ]]
           <table class="table">
             <tr>
               <th>Date</th>
@@ -44,6 +52,7 @@
             </tr>
             [[ pass ]]
           </table>
+          [[ pass ]]
         </div>
       </div>
       <div class="panel ml-5" style="width: 100%;">
