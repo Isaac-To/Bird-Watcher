@@ -7,6 +7,41 @@
 </style>
 
 <div class="section" id="app" v-cloak>
+  <h2>Checklist Page</h2>
+
+  <!-- Form to capture checklist sightings -->
+  <div>
+    <form @submit.prevent="submitSighting">
+      <!-- Species Dropdown with Search -->
+      <div>
+        <label for="species">Species:</label>
+        <select v-model="sighting.species" id="species" required>
+          <option v-for="species in filteredSpecies" :key="species.id" :value="species.id">
+            {{ species.name }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Bird Count -->
+      <div>
+        <label for="count">Bird Count:</label>
+        <input type="number" v-model="sighting.count" id="count" min="1" required>
+      </div>
+
+      <!-- Location Coordinates (hidden or pre-filled) -->
+      <input type="hidden" v-model="sighting.lat" />
+      <input type="hidden" v-model="sighting.lng" />
+
+      <!-- Map Interaction for Location -->
+      <div id="map" style="height: 400px;"></div>
+
+      <!-- Submit Button -->
+      <button type="submit">Submit Sighting</button>
+    </form>
+  </div>
+
+
+  <!--
   [[if not globals().get('user'):]]
   <div class="notification is-warning">
     <p>You must be logged in to access this feature. <a href="/Bird-Watcher/auth/login">Login</a></p>
@@ -44,7 +79,7 @@
     <button class="button is-primary" @click="submitChecklist">Submit Checklist</button>
   </div>
   [[pass]]
-
+  -->
   
   
 </div>
@@ -52,30 +87,7 @@
   
   
   
-  <!--
-  <h1 class="title">Enter Checklist</h1>
-  <div>
-    <label>Search for Species:</label>
-    <input type="text" v-model="search" placeholder="Enter species name">
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Species</th>
-        <th>Count</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="species in filteredSpecies" :key="species.id">
-        <td>{{ species.name }}</td>
-        <td>{{ species.count || 0 }}</td>
-        <td><button @click="increment(species)">+1</button></td>
-      </tr>
-    </tbody>
-  </table>
-  <button @click="submitChecklist">Submit</button>
--->
+  
 </div>
 
 [[block page_head]]
@@ -85,15 +97,95 @@
 
 [[block page_scripts]]
 <!-- Loads the checklist-specific js for Vue -->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+  new Vue({
+    el: '#app',
+    data: {
+      sighting: {
+        species: '',
+        count: 1,
+        lat: 0,
+        lng: 0
+      },
+      speciesList: [],  // Will store the species options
+      filteredSpecies: [],  // Filtered species list based on search criteria
+      map: null,  // Leaflet map object
+    },
+    mounted() {
+      this.loadSpecies();
+      this.initializeMap();
+    },
+    methods: {
+      // Fetch species data from the server (you can adapt the API endpoint)
+      loadSpecies() {
+        // Assuming you have an API endpoint returning species data
+        fetch('/api/species')
+          .then(response => response.json())
+          .then(data => {
+            this.speciesList = data;
+            this.filteredSpecies = data;
+          });
+      },
+      // Initialize the map
+      initializeMap() {
+        this.map = L.map('map').setView([51.505, -0.09], 13);  // Default view; Update based on user's location
 
+        // Add a tile layer to the map
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(this.map);
+
+        // Listen for map clicks and update lat/lng values
+        this.map.on('click', (e) => {
+          this.sighting.lat = e.latlng.lat;
+          this.sighting.lng = e.latlng.lng;
+        });
+
+        // If the user has a pre-selected location (passed via URL or from the Location page), set the map center
+        const urlParams = new URLSearchParams(window.location.search);
+        const lat = parseFloat(urlParams.get('lat'));
+        const lng = parseFloat(urlParams.get('lng'));
+        if (lat && lng) {
+          this.sighting.lat = lat;
+          this.sighting.lng = lng;
+          this.map.setView([lat, lng], 13);
+        }
+      },
+      // Submit sighting data
+      submitSighting() {
+        // Example API call to submit the sighting (adapt to your backend)
+        fetch('/api/sightings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(this.sighting)
+        })
+        .then(response => response.json())
+        .then(data => {
+          alert('Sighting submitted successfully!');
+          this.sighting = { species: '', count: 1, lat: 0, lng: 0 };  // Reset form
+        })
+        .catch(error => {
+          alert('Error submitting sighting.');
+          console.error(error);
+        });
+      }
+    },
+    watch: {
+      // Watch for filter string changes to update species list
+      filterString(newFilter) {
+        this.filteredSpecies = this.speciesList.filter(species => species.name.toLowerCase().includes(newFilter.toLowerCase()));
+      }
+    }
+  });
+</script>
+
+<!--
 <script>
   let speciesList = JSON.parse('[[=speciesList]]');
   let checklist_url = "[[=URL('checklist')]]";
-</script>
-<script src="js/checklist.js"></script>
-<!--
-<script>
-  let my_callback_url = "[[=XML(my_callback_url)]]";
 </script>
 <script src="js/checklist.js"></script>
 -->

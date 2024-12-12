@@ -7,6 +7,33 @@
 </style>
 
 <div class="section" id="app" v-cloak>
+  <h2>My Checklist</h2>
+
+  <!-- Table to display the user's checklist -->
+  <table>
+    <thead>
+      <tr>
+        <th>Species</th>
+        <th>Count</th>
+        <th>Location</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="sighting in checklist" :key="sighting.id">
+        <td>{{ sighting.species }}</td>
+        <td>{{ sighting.count }}</td>
+        <td>{{ sighting.location }}</td>
+        <td>{{ sighting.date }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+
+
+  <!--
   [[if not globals().get('user'):]]
   <div class="notification is-warning">
     <p>You must be logged in to access this feature. <a href="/Bird-Watcher/auth/login">Login</a></p>
@@ -28,6 +55,7 @@
     </div>
   </div>
   [[pass]]
+  -->
 </div>
 
 
@@ -35,15 +63,35 @@
 [[block page_scripts]]
 <!-- Loads the mychecklist-specific js for Vue -->
 <script>
+  new Vue({
+    el: '#app',
+    data: {
+      checklist: [],  // Holds the user's checklist data
+    },
+    mounted() {
+      this.loadChecklist();
+    },
+    methods: {
+      // Fetch user's checklist from the backend (example API)
+      loadChecklist() {
+        fetch('/api/my_checklist')
+          .then(response => response.json())
+          .then(data => {
+            this.checklist = data;
+          })
+          .catch(error => {
+            console.error('Error loading checklist:', error);
+          });
+      }
+    }
+  });
+</script>
+<!--
+<script>
   let checklists = Json.parse('[[=checklists]]');
   let delete_checklist_url = "[[=URL('delete_checklist')]]";
 </script>
 <script src="js/my_checklist.js"></script>
-
-<!--
-<script>
-  let my_callback_url = "[[=XML(my_callback_url)]]";
-</script>
-<script src="js/index.js"></script>
 -->
+
 [[end]]
