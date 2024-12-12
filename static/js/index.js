@@ -12,7 +12,7 @@ app.redirectChecklist = function (latlng) {
   app.closePopup();
 };
 
-// Redirect to the statistics page
+// Redirect to the location page
 app.redirectStatistics = function (fromlatlng, tolatlng) {
   const north = Math.max(fromlatlng.lat, tolatlng.lat);
   const east = Math.max(fromlatlng.lng, tolatlng.lng);
@@ -28,7 +28,7 @@ app.redirectStatistics = function (fromlatlng, tolatlng) {
     "&w=" +
     west.toFixed(5);
 
-  location.assign(statistics_url + query);
+  location.assign(location_url + query);
 
   app.closePopup();
 };
