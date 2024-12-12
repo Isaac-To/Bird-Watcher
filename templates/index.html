@@ -4,6 +4,11 @@
 [v-cloak] {
      display: none;
 }
+#map {
+     height: 400px;
+     width: 100%;
+     margin-bottom: 20px;
+}
 </style>
 
 <div class="section" id="app" v-cloak>
@@ -62,7 +67,7 @@
 <script>
   let checklist_url = "[[=URL('checklist')]]";
   let location_url = "[[=URL('location')]]";
-  let sightings_url = "[[=URL('sightings')]]";
+  let sightings_url = "[[=URL('api/sightings')]]";
   let speciesList = [[=XML(speciesList)]];
 </script>
 <script src="js/leaflet.js"></script>
