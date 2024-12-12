@@ -102,34 +102,36 @@ app.components = {
         this.map
       );
 
-      // Add heatmap and selection area
-      axios(sightings_url).then((response) => {
-        const heat = L.heatLayer([]).addTo(this.map);
-        const sightings = response.data.sightings;
-        heat.setLatLngs(sightings);
-
-        // Find median to compute a nice heatmap max
-        sightings.sort((a, b) => b[2] - a[2]);
-        if (sightings.length > 0) {
-          const median = sightings[Math.floor(sightings.length / 2)][2];
-          heat.setOptions({ max: median });
-        }
-      });
-
-      this.rect = L.rectangle(this.bounds, {
-        color: "#ff2000",
-        weight: 1,
-      }).addTo(this.map);
-
       this.map.on("click", (e) => {
         console.log("Map clicked at:", e.latlng);
         const size = 20 / Math.pow(2, this.map.getZoom() - 18);
         const bounds = e.latlng.toBounds(size);
         this.$emit("region-selected", bounds);
       });
+      
+      this.rect = L.rectangle(this.bounds, {
+        color: "#ff2000",
+        weight: 1,
+      }).addTo(this.map);
 
-      // Update Leaflet map size once css is loaded
-      addEventListener("load", this.map.invalidateSize.bind(this.map));
+      addEventListener("load", () => {
+        // Add heatmap and selection area
+        axios(sightings_url).then((response) => {
+          const heat = L.heatLayer([]).addTo(this.map);
+          const sightings = response.data.sightings;
+          heat.setLatLngs(sightings);
+
+          // Find median to compute a nice heatmap max
+          sightings.sort((a, b) => b[2] - a[2]);
+          if (sightings.length > 0) {
+            const median = sightings[Math.floor(sightings.length / 2)][2];
+            heat.setOptions({ max: median });
+          }
+        });
+
+        // Update Leaflet map size once css is loaded
+        this.map.invalidateSize();
+      });
     },
   },
   "species-list": {
