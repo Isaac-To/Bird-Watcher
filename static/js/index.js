@@ -1,263 +1,293 @@
 "use strict";
 
-let app = {};
+const app = {};
+
+// Redirect to the checklist page
+app.redirectChecklist = function (latlng) {
+  const query =
+    "?lat=" + latlng.lat.toFixed(5) + "&lng=" + latlng.lng.toFixed(5);
+
+  location.assign(checklist_url + query);
+
+  app.closePopup();
+};
+
+// Redirect to the location page
+app.redirectStatistics = function (fromlatlng, tolatlng) {
+  const north = Math.max(fromlatlng.lat, tolatlng.lat);
+  const east = Math.max(fromlatlng.lng, tolatlng.lng);
+  const south = Math.min(fromlatlng.lat, tolatlng.lat);
+  const west = Math.min(fromlatlng.lng, tolatlng.lng);
+  const query =
+    "?n=" +
+    north.toFixed(5) +
+    "&e=" +
+    east.toFixed(5) +
+    "&s=" +
+    south.toFixed(5) +
+    "&w=" +
+    west.toFixed(5);
+
+  location.assign(location_url + query);
+
+  app.closePopup();
+};
+
+// Resize statistics rect based on position of handles
+app.updateStatsRect = function () {
+  if (app.statistics) {
+    const min = app.statistics.minHandle.getLatLng();
+    const max = app.statistics.maxHandle.getLatLng();
+    const bounds = L.latLngBounds(min, max);
+
+    app.statistics.rect.setBounds(bounds);
+    app.statistics.popup.setLatLng({
+      lat: Math.max(min.lat, max.lat),
+      lng: (min.lng + max.lng) / 2,
+    });
+  }
+};
+
+// Create a rectangular region that the user can drag around
+app.openStats = function (latlng) {
+  app.closeStats();
+
+  // Define rectangle geographical bounds
+  // At zoom 18 (max zoom) this is 20 meters
+  const size = 20 / Math.pow(2, app.map.getZoom() - 18);
+  const bounds = latlng.toBounds(size);
+  const markerOptions = {
+    icon: app.handleIcon,
+    keyboard: false,
+    draggable: true,
+  };
+
+  // Create a rectangle with two draggable markers on the corners
+  const rect = L.rectangle(bounds, { color: "#ff2000", weight: 1 }).addTo(
+    app.map
+  );
+  const minHandle = L.marker(bounds.getSouthWest(), markerOptions).addTo(
+    app.map
+  );
+  const maxHandle = L.marker(bounds.getNorthEast(), markerOptions).addTo(
+    app.map
+  );
+
+  for (const handle of [minHandle, maxHandle]) {
+    handle.on("move", app.updateStatsRect);
+  }
+
+  // Create a popup that redirects to the stats page
+  const options = {
+    closeButton: true,
+    autoClose: false,
+    closeOnClick: false,
+    closeOnEscapeKey: true,
+  };
+
+  const buttonContainer = L.DomUtil.create("div");
+  const statsButton = L.DomUtil.create("button", "button", buttonContainer);
+  statsButton.innerText = "View Statistics";
+  statsButton.addEventListener("click", (_) => {
+    if (app.statistics)
+      app.redirectStatistics(
+        app.statistics.minHandle.getLatLng(),
+        app.statistics.maxHandle.getLatLng()
+      );
+  });
+
+  const popup = L.popup(options)
+    .setLatLng(latlng)
+    .setContent(buttonContainer)
+    .openOn(app.map);
+
+  popup.addEventListener("remove", app.closeStats);
+
+  app.statistics = {
+    rect: rect,
+    minHandle: minHandle,
+    maxHandle: maxHandle,
+    popup: popup,
+  };
+
+  app.updateStatsRect();
+};
+
+// Remove the statistics rectangle, if it exists
+app.closeStats = function () {
+  const stats = app.statistics;
+  if (stats) {
+    stats.popup.close();
+    stats.rect.remove();
+    stats.minHandle.remove();
+    stats.maxHandle.remove();
+    app.statistics = undefined;
+  }
+};
+
+// Open a popup to add sightings or see statistics at a position
+app.openPopup = function (latlng) {
+  if (app.popup) return app.popup;
+
+  const options = {
+    closeButton: false,
+    autoClose: false,
+    closeOnClick: false,
+    closeOnEscapeKey: false,
+  };
+
+  const buttonContainer = L.DomUtil.create("div");
+  const sightingButton = L.DomUtil.create(
+    "button",
+    "button mr-4",
+    buttonContainer
+  );
+  sightingButton.innerText = "Add Sighting";
+  sightingButton.addEventListener("click", (_) => {
+    app.redirectChecklist(app.clickLatLng);
+  });
+
+  const infoButton = L.DomUtil.create("button", "button", buttonContainer);
+  infoButton.innerText = "Statistics";
+  infoButton.addEventListener("click", (_) => {
+    app.openStats(app.clickLatLng);
+  });
+
+  return L.popup(options)
+    .setLatLng(latlng)
+    .setContent(buttonContainer)
+    .openOn(app.map);
+};
+
+// Close the map's popup, if it is open
+app.closePopup = function () {
+  if (app.popup) {
+    app.popup.close();
+    app.popup = undefined;
+  }
+};
+
+app.mapClicked = function (event) {
+  app.clickLatLng = event.latlng;
+
+  if (app.popup) {
+    // Move popup if one was already open
+    app.popup.setLatLng(event.latlng);
+  } else {
+    // If no popup exists, create one
+    app.popup = app.openPopup(event.latlng);
+  }
+};
 
 app.data = {
-    data: function () {
-        return {
-            isLoggedIn: false,
-            regionId: null,
-            latitude: null,
-            longitude: null,
-            selectedSpecies: null,
-            speciesList: [],
-            trendsData: [],
-            contributors: [],
-            apiInProgress: {
-                species: false,
-                contributors: false,
-            },
-            chart: null,
-        };
+  data: function () {
+    return {
+      filterString: "",
+      filterList: [],
+      speciesList: speciesList,
+      sightingsPromise: undefined,
+    };
+  },
+  methods: {
+    includesFilterString: function (species) {
+      return species.toUpperCase().includes(this.filterString.toUpperCase());
     },
-    methods: {
-        checkLoginStatus: function () {
-            axios.get(check_login_url)
-                .then((response) => {
-                    this.isLoggedIn = response.data.logged_in;
-                    console.log(this.isLoggedIn ? "User is logged in." : "User is not logged in.");
-                })
-                .catch((error) => {
-                    console.error("Error checking login status:", error);
-                });
-        },
-        selectRegion: function (regionData) {
-            console.log("Region selected:", regionData.regionId);
-            console.log("Parsed Latitude and Longitude from click:", {
-                lat: regionData.lat,
-                lng: regionData.lng,
-            });
 
-            this.regionId = regionData.regionId;
-            this.latitude = regionData.lat;
-            this.longitude = regionData.lng;
+    clearFilter: function () {
+      if (this.filterString !== "" || this.filterList.length > 0) {
+        this.filterString = "";
+        this.filterList = [];
+        requestAnimationFrame(this.updateFilter);
+      }
+    },
 
-            if (this.latitude && this.longitude) {
-                console.log("Triggering API calls with latitude and longitude.");
-                this.loadSpeciesList();
-                this.loadContributors();
-            } else {
-                console.error("Latitude or longitude is missing. Skipping API calls.");
-            }
-        },
-        selectSpecies: function (speciesName) {
-            console.log("Species selected:", speciesName);
-            this.selectedSpecies = speciesName;
-            this.loadTrends(speciesName);
-        },
-        loadSpeciesList: function () {
-            if (!this.isLoggedIn) {
-                alert("Please log in to view species data.");
-                return;
-            }
-            console.log("Making API request for species list.");
-            axios.get(`${species_url}?latitude=${this.latitude}&longitude=${this.longitude}`)
-                .then((response) => {
-                    console.log("Species list response:", response.data);
-                    this.speciesList = response.data.data || [];
-                })
-                .catch((error) => {
-                    console.error("Error loading species list:", error);
-                });
-        },
-                
-        
-        loadContributors: function () {
-            if (!this.isLoggedIn) {
-                alert("Please log in to view contributors.");
-                return;
-            }
-            console.log("Making API request for contributors.");
-            axios.get(`${contributors_url}?latitude=${this.latitude}&longitude=${this.longitude}`)
-                .then((response) => {
-                    console.log("Contributors response:", response.data);
-                    this.contributors = response.data.data || [];
-                })
-                .catch((error) => {
-                    console.error("Error loading contributors data:", error);
-                });
-        },                     
-        loadTrends: function (speciesName) {
-            if (!this.isLoggedIn) {
-                alert("Please log in to view trends data.");
-                return;
-            }
-            console.log("Loading trends for species:", speciesName);
-            axios.get(`${trends_url}`, {
-                params: {
-                    latitude: this.latitude,
-                    longitude: this.longitude,
-                    species_name: speciesName,
-                },
-            })
-            .then((response) => {
-                console.log("Trends data response:", response.data);
-                this.trendsData = response.data.data || [];
-            })
-            .catch((error) => {
-                console.error("Error loading trends data:", error);
-            });
-        },              
+    startUpdateFilter: function () {
+      if (this.updateFilterTimeout !== undefined)
+        clearTimeout(this.updateFilterTimeout);
+
+      this.updateFilterTimeout = setTimeout(this.updateFilter, 500);
     },
-    mounted: function () {
-        console.log("Checking login status...");
-        this.checkLoginStatus();
+
+    updateFilter: function () {
+      this.updateFilterTimeout = undefined;
+      this.fetchSightings();
     },
-    watch: {
-        speciesList: function (newVal) {
-            console.log("Updated speciesList in parent:", newVal);
-        },
-        contributors: function (newVal) {
-            console.log("Updated contributors in parent:", newVal);
-        },
-    },    
+
+    fetchSightings: function () {
+      if (this.sightingsPromise) {
+        this.sightingsPromise.abort();
+      }
+
+      // Generate search params
+      const params = new URLSearchParams();
+      if (this.filterString !== "") params.append("s", this.filterString);
+      if (
+        this.filterList.length > 0 &&
+        this.filterList.some(this.includesFilterString)
+      )
+        params.append("l", this.filterList.join(","));
+
+      // The filter may be changed mid request, so include a way to abort
+      const requestAborter = new AbortController();
+
+      // Request sightings from the server
+      const thisPromise = axios(sightings_url, {
+        signal: requestAborter.signal,
+        params: params,
+      }).then((response) => {
+        if (thisPromise !== this.sightingsPromise) return;
+
+        const sightings = response.data.sightings;
+        app.heat.setLatLngs(sightings);
+
+        // Find median to compute a nice heatmap max
+        sightings.sort((a, b) => b[2] - a[2]);
+        if (sightings.length > 0) {
+          const median = sightings[Math.floor(sightings.length / 2)][2];
+          const max = sightings[0][2];
+          app.heat.setOptions({ max: Math.min(median, max) });
+        }
+
+        this.sightingsPromise = undefined;
+      });
+
+      thisPromise.abort = requestAborter.abort.bind(requestAborter);
+      this.sightingsPromise = thisPromise;
+    },
+  },
 };
 
-app.components = {
-    'map-selector': {
-        template: `<div id="map"></div>`,
-        mounted() {
-            console.log("Map Selector Mounted");
-            const map = L.map("map").setView([51.505, -0.09], 13);
-            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-            map.on("click", (e) => {
-                console.log("Map clicked at:", e.latlng);
-                const regionId = `region_${Math.round(e.latlng.lat * 1000)}`;
-                this.$emit("region-selected", { regionId, lat: e.latlng.lat, lng: e.latlng.lng });
-            });
-        },
-    },
-    'species-list': {
-        props: ['speciesList'], 
-        template: `
-            <ul>
-                <li 
-                    v-for="species in speciesList" 
-                    :key="species.common_name" 
-                    @click="$emit('species-selected', species.common_name)"
-                >
-                {{ species.common_name }} ({{ species.total_count || 0 }} sightings)
-            </li>
-        
-            </ul>
-        `,
-    },    
-    'graph-visualization': {
-        props: ['trendsData', 'speciesName'],
-        data() {
-            return {
-                chart: null, // Hold the chart instance here
-            };
-        },
-        methods: {
-            renderGraph() {
-                // Ensure trendsData exists and has data
-                if (!this.trendsData || this.trendsData.length === 0) {
-                    console.warn("No trends data to display.");
-                    return;
-                }
-    
-                try {
-                    const labels = this.trendsData.map((row) => row.date);
-                    const values = this.trendsData.map((row) => row.total_count);
-    
-                    // Destroy any existing chart to avoid duplicates
-                    if (this.chart) {
-                        this.chart.destroy();
-                    }
-    
-                    // Ensure the canvas element exists
-                    const canvas = this.$refs.canvas;
-                    if (!canvas) {
-                        console.error("Canvas element not found.");
-                        return;
-                    }
-    
-                    const ctx = canvas.getContext("2d");
-                    this.chart = new Chart(ctx, {
-                        type: "line",
-                        data: {
-                            labels: labels,
-                            datasets: [
-                                {
-                                    label: `Sightings for ${this.speciesName}`,
-                                    data: values,
-                                    borderColor: "blue",
-                                    backgroundColor: "rgba(0, 0, 255, 0.1)",
-                                    fill: true,
-                                },
-                            ],
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                x: {
-                                    title: {
-                                        display: true,
-                                        text: "Date",
-                                    },
-                                },
-                                y: {
-                                    title: {
-                                        display: true,
-                                        text: "Sightings",
-                                    },
-                                },
-                            },
-                        },
-                    });
-                } catch (error) {
-                    console.error("Error rendering the graph:", error);
-                }
-            },
-        },
-        mounted() {
-            // Render the graph initially if trendsData already exists
-            if (this.trendsData && this.trendsData.length > 0) {
-                this.renderGraph();
-            }
-        },
-        watch: {
-            trendsData: {
-                handler: "renderGraph",
-                immediate: true, // Call handler immediately upon initial load
-            },
-        },
-        template: `<div>
-            <canvas ref="canvas"></canvas>
-        </div>`,
-        unmounted() {
-            // Destroy the chart when the component is unmounted
-            if (this.chart) {
-                this.chart.destroy();
-            }
-        },
-    },                  
-    'top-contributors': {
-        props: ['contributors'],
-        template: `
-            <ul>
-                <li v-for="contributor in contributors" :key="contributor.observer_id">
-                    Observer {{ contributor.observer_id }} - {{ contributor.checklist_count || 0 }} checklists
-                </li>
-            </ul>
-        `,
-    },    
-};
+app.vue = Vue.createApp(app.data).mount("#app");
 
-app.vue = Vue.createApp(app.data);
-Object.entries(app.components).forEach(([name, component]) => {
-    app.vue.component(name, component);
+// Create resources
+app.handleIcon = L.icon({
+  iconUrl: "img/handle.png",
+  iconSize: [10, 10],
+  iconAnchor: [4.5, 4.5],
 });
-app.vue.mount("#app");
+
+// Initialize Leaflet map centered on the U.S.
+app.map = L.map("map", {
+  center: [38, -98],
+  zoom: 4,
+});
+app.map.on("click", app.mapClicked);
+app.map.on("blur", app.closePopup);
+
+// Add street map
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution:
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+}).addTo(app.map);
+
+// Add heatmap, populating it with sighting data
+app.heat = L.heatLayer([]).addTo(app.map);
+app.vue.fetchSightings();
+
+// Zoom in on user's approximate location
+axios("https://geolocation-db.com/json/").then((res) => {
+  const lat = res.data.latitude;
+  const lng = res.data.longitude;
+
+  app.map.flyTo([lat, lng], 10, { animate: false });
+});

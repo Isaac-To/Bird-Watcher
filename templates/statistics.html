@@ -1,0 +1,94 @@
+[[extend 'layout.html']]
+
+<style>
+  [v-cloak] {
+    display: none;
+  }
+</style>
+
+<div class="section" id="app" v-cloak>
+  <!-- Put here your Vue.js template -->
+  <h1 class="title is-1">Statistics</h1>
+  <div>
+    <div><h2 class="subtitle is-2">User Information</h2></div>
+    <div>
+      <div class="card m-2 p-4">
+        <h3 class="subtitle is-3"># of Bird Sightings over Time</h3>
+        <table>
+          <tr>
+            <th>Date</th>
+            <th>&nbsp;&nbsp;&nbsp;&nbsp;# of Sightings</th>
+          </tr>
+          [[ for day, count in sightingsByDay.items() : ]]
+          <tr>
+            <td>[[=day]]</td>
+            <td>&nbsp;&nbsp;&nbsp;&nbsp;[[=count]]</td>
+          </tr>
+          [[ pass ]]
+        </table>
+      </div>
+      <div class="card m-2 p-4">
+        <h3 class="subtitle is-3">Time Spent</h3>
+        <table>
+          <tr>
+            <th>Date</th>
+            <th>&nbsp;&nbsp;&nbsp;&nbsp; Minutes</th>
+          </tr>
+          [[ for day, time in timeByDay.items() : ]]
+          <tr>
+            <td>[[=day]]</td>
+            <td>&nbsp;&nbsp;&nbsp;&nbsp;[[=time]]</td>
+          </tr>
+          [[ pass ]]
+        </table>
+      </div>
+      <div class="card m-2 p-4">
+        <h3 class="subtitle is-3">Heat Map</h3>
+      </div>
+    </div>
+    <hr class="is-divider" />
+    <div>
+      <h2 class="subtitle is-2">Species Seen:</h2>
+      [[=searchForm]]
+      [[ for species, sightings in speciesSeen.items() : ]]
+      <div class="box" id="[[=species]]">
+        <h3 class="subtitle is-3">[[ =species ]]</h3>
+        <div id="map-container"></div>
+        <ul class="ml-2 is-flex">
+          [[ for date, (longitude, latitude) in sightings : ]]
+          <li>
+            <button type="button" class="button m-2" onclick="showMap('[[=species]]', [[=latitude]], [[=longitude]])">[[ =date ]]</button>
+          </li>
+          [[ pass ]]
+        </ul>
+      </div>
+      [[ pass ]]
+    </div>
+  </div>
+</div>
+<script>
+  function showMap(species, latitude, longitude) {
+    speciesTree = document.getElementById(species);
+    let mapElements = speciesTree.querySelector('#map-container');
+    mapElements.innerHTML = '';
+    let mapElement = document.createElement('div');
+    mapElement.id = 'map';
+    mapElement.style.width = '100%';
+    mapElement.style.height = '20vh';
+    mapElements.appendChild(mapElement);
+    // Create new map instance
+    let map = L.map(mapElement).setView([longitude, latitude], 13);
+    let tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(map);
+    L.marker([longitude, latitude]).addTo(map).bindPopup("Location").openPopup();
+  }
+</script>
+
+[[block page_scripts]]
+<!-- Loads the index-specific js for Vue -->
+<script>
+  let my_callback_url = "[[=XML(my_callback_url)]]";
+</script>
+<script src="js/index.js"></script>
+[[end]]

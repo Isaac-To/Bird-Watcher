@@ -10,21 +10,27 @@
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/bulma.css">
     <link rel="stylesheet" href="font-awesome-4.7.0/css/font-awesome.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-    <!-- JavaScript for Leaflet -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- Allow individual pages to add head content -->
-    [[block page_head]]<!-- Individual pages can customize header here -->[[end]]
+    <link rel="stylesheet" href="css/leaflet.css"/>
+    <!-- <link rel="stylesheet" href="fontawesome-free-6.5.1-web/css/fontawesome.css">
+    <link rel="stylesheet" href="fontawesome-free-6.5.1-web/css/brands.css">
+    <link rel="stylesheet" href="fontawesome-free-6.5.1-web/css/solid.css"> -->
+    [[block page_head]]<!-- individual pages can customize header here -->[[end]]
   </head>
   <body>
     <!-- Navigation bar -->
     <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
         <a class="navbar-item" href="[[=URL('index')]]">
-          Bird-Watcher
+          Home
+          <!-- <img class="logo" width="150" src="images/site_icon.png"> -->
         </a>
+        [[if globals().get('user'):]]
+        <a class="navbar-item" href="[[=URL('statistics')]]">
+          My Birding
+        </a>
+        [[pass]]
+
+
         <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="the-navbar-menu"
            onclick="this.classList.toggle('is-active');document.getElementById(this.dataset.target).classList.toggle('is-active');">
           <span aria-hidden="true"></span>
@@ -78,8 +84,6 @@
   <script src="js/axios.min.js"></script>
   <script src="js/vue3.js"></script>
   <script src="js/utils.js"></script>
-
-  <!-- Allow individual pages to add additional scripts -->
-  [[block page_scripts]]
-  <!-- Individual pages can add scripts here -->[[end]]
+  <script src="js/leaflet.js"></script>
+  [[block page_scripts]]<!-- individual pages can add scripts here -->[[end]]
 </html>

@@ -1,0 +1,57 @@
+[[extend 'layout.html']]
+
+<style>
+[v-cloak] {
+     display: none;
+}
+#map {
+     height: 400px;
+     width: 100%;
+     margin-bottom: 20px;
+}
+</style>
+
+<div class="section" id="app" v-cloak>
+  <div v-if="!isLoggedIn" class="notification is-warning">
+    <p>You must be logged in to access this feature. <a href="/Bird-Watcher/auth/login">Login</a></p>
+  </div>
+  <div v-else>
+    <h1 class="title"><i class="fa-solid fa-dove"></i> Bird-Watching Location Page</h1>
+    
+    <div>
+      <h2 style="font-weight: bold; font-size: 1.5rem;">Select a Region</h2>
+      <map-selector @region-selected="selectRegion"></map-selector>
+    </div>
+
+    <div>
+      <h2 style="font-weight: bold; font-size: 1.5rem;">Species in Selected Region</h2>
+      <species-list :species-list="speciesList" @species-selected="selectSpecies"></species-list>
+    </div>
+    
+    <div>
+      <h2 style="font-weight: bold; font-size: 1.5rem;">Trends for {{ selectedSpecies || '...' }}</h2>
+      <graph-visualization :trends-data="trendsData" :species-name="selectedSpecies"></graph-visualization>
+    </div>
+    
+    <div>
+      <h2 style="font-weight: bold; font-size: 1.5rem;">Top Contributors</h2>
+      <top-contributors :contributors="contributors"></top-contributors>
+    </div>    
+    
+  </div>
+</div>
+
+[[block page_scripts]]
+<script>
+  let species_url = "/Bird-Watcher/api/species_by_region";
+  let trends_url = "/Bird-Watcher/api/species_trends";
+  let contributors_url = "/Bird-Watcher/api/top_contributors";
+  let check_login_url = "/Bird-Watcher/api/check_login";
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/sugar.min.js"></script>
+<script src="js/axios.min.js"></script>
+<script src="js/vue3.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/location.js"></script>
+[[end]]
