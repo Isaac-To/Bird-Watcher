@@ -14,7 +14,11 @@ app.redirectChecklist = function (latlng) {
 
 // Redirect to the location page
 app.redirectStatistics = function (fromlatlng, tolatlng) {
-  location.assign(location_url + '?bounds=' + L.latLngBounds([fromlatlng, tolatlng]).toBBoxString());
+  location.assign(
+    location_url +
+      "?bounds=" +
+      L.latLngBounds([fromlatlng, tolatlng]).toBBoxString()
+  );
   app.closePopup();
 };
 
