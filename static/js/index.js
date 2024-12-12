@@ -14,22 +14,7 @@ app.redirectChecklist = function (latlng) {
 
 // Redirect to the location page
 app.redirectStatistics = function (fromlatlng, tolatlng) {
-  const north = Math.max(fromlatlng.lat, tolatlng.lat);
-  const east = Math.max(fromlatlng.lng, tolatlng.lng);
-  const south = Math.min(fromlatlng.lat, tolatlng.lat);
-  const west = Math.min(fromlatlng.lng, tolatlng.lng);
-  const query =
-    "?n=" +
-    north.toFixed(5) +
-    "&e=" +
-    east.toFixed(5) +
-    "&s=" +
-    south.toFixed(5) +
-    "&w=" +
-    west.toFixed(5);
-
-  location.assign(location_url + query);
-
+  location.assign(location_url + '?bounds=' + L.latLngBounds([fromlatlng, tolatlng]).toBBoxString());
   app.closePopup();
 };
 
@@ -220,12 +205,11 @@ app.data = {
 
       // Generate search params
       const params = new URLSearchParams();
-      if (this.filterString !== "") params.append("s", this.filterString);
-      if (
-        this.filterList.length > 0 &&
-        this.filterList.some(this.includesFilterString)
-      )
-        params.append("l", this.filterList.join(","));
+      const useFilterList = this.filterList.filter(this.includesFilterString);
+      if (useFilterList.length > 0)
+        params.append("list", this.filterList.join(","));
+      else if (this.filterString !== "")
+        params.append("search", this.filterString);
 
       // The filter may be changed mid request, so include a way to abort
       const requestAborter = new AbortController();
@@ -244,8 +228,7 @@ app.data = {
         sightings.sort((a, b) => b[2] - a[2]);
         if (sightings.length > 0) {
           const median = sightings[Math.floor(sightings.length / 2)][2];
-          const max = sightings[0][2];
-          app.heat.setOptions({ max: Math.min(median, max) });
+          app.heat.setOptions({ max: median });
         }
 
         this.sightingsPromise = undefined;

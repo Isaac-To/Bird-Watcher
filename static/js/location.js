@@ -3,10 +3,7 @@ let app = {};
 app.data = {
     data: function () {
         return {
-            isLoggedIn: false,
-            regionId: null,
-            latitude: null,
-            longitude: null,
+            bounds: L.latLngBounds([0,0], [0,0]),
             selectedSpecies: null,
             speciesList: [],
             trendsData: [],
@@ -19,34 +16,11 @@ app.data = {
         };
     },
     methods: {
-        checkLoginStatus: function () {
-            axios.get(check_login_url)
-                .then((response) => {
-                    this.isLoggedIn = response.data.logged_in;
-                    console.log(this.isLoggedIn ? "User is logged in." : "User is not logged in.");
-                })
-                .catch((error) => {
-                    console.error("Error checking login status:", error);
-                });
-        },
-        selectRegion: function (regionData) {
-            console.log("Region selected:", regionData.regionId);
-            console.log("Parsed Latitude and Longitude from click:", {
-                lat: regionData.lat,
-                lng: regionData.lng,
-            });
+        selectRegion: function (bounds) {
+            this.bounds = bounds;
 
-            this.regionId = regionData.regionId;
-            this.latitude = regionData.lat;
-            this.longitude = regionData.lng;
-
-            if (this.latitude && this.longitude) {
-                console.log("Triggering API calls with latitude and longitude.");
-                this.loadSpeciesList();
-                this.loadContributors();
-            } else {
-                console.error("Latitude or longitude is missing. Skipping API calls.");
-            }
+            this.loadSpeciesList();
+            this.loadContributors();
         },
         selectSpecies: function (speciesName) {
             console.log("Species selected:", speciesName);
@@ -54,12 +28,8 @@ app.data = {
             this.loadTrends(speciesName);
         },
         loadSpeciesList: function () {
-            if (!this.isLoggedIn) {
-                alert("Please log in to view species data.");
-                return;
-            }
             console.log("Making API request for species list.");
-            axios.get(`${species_url}?latitude=${this.latitude}&longitude=${this.longitude}`)
+            axios.get(`${species_url}?bounds=${this.bounds.toBBoxString()}`)
                 .then((response) => {
                     console.log("Species list response:", response.data);
                     this.speciesList = response.data.data || [];
@@ -68,15 +38,9 @@ app.data = {
                     console.error("Error loading species list:", error);
                 });
         },
-                
-        
         loadContributors: function () {
-            if (!this.isLoggedIn) {
-                alert("Please log in to view contributors.");
-                return;
-            }
             console.log("Making API request for contributors.");
-            axios.get(`${contributors_url}?latitude=${this.latitude}&longitude=${this.longitude}`)
+            axios.get(`${contributors_url}?bounds=${this.bounds.toBBoxString()}`)
                 .then((response) => {
                     console.log("Contributors response:", response.data);
                     this.contributors = response.data.data || [];
@@ -86,15 +50,10 @@ app.data = {
                 });
         },                     
         loadTrends: function (speciesName) {
-            if (!this.isLoggedIn) {
-                alert("Please log in to view trends data.");
-                return;
-            }
             console.log("Loading trends for species:", speciesName);
             axios.get(`${trends_url}`, {
                 params: {
-                    latitude: this.latitude,
-                    longitude: this.longitude,
+                    bounds: this.bounds.toBBoxString(),
                     species_name: speciesName,
                 },
             })
@@ -106,10 +65,6 @@ app.data = {
                 console.error("Error loading trends data:", error);
             });
         },              
-    },
-    mounted: function () {
-        console.log("Checking login status...");
-        this.checkLoginStatus();
     },
     watch: {
         speciesList: function (newVal) {
@@ -123,16 +78,50 @@ app.data = {
 
 app.components = {
     'map-selector': {
+        props: ['bounds'],
+        data() {
+            return {
+                rect: null,
+                map: null
+            };
+        },
+        watch: {
+            bounds() {
+                this.rect.setBounds(this.bounds);
+                this.map.panTo(this.bounds.getCenter());
+            },
+        },
         template: `<div id="map"></div>`,
         mounted() {
             console.log("Map Selector Mounted");
-            const map = L.map("map").setView([51.505, -0.09], 13);
-            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-            map.on("click", (e) => {
+            this.map = L.map("map").setView(this.bounds.getCenter(), 7);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(this.map);
+
+            // Add heatmap and selection area
+            axios(sightings_url).then((response) => {
+                const heat = L.heatLayer([]).addTo(this.map);
+                const sightings = response.data.sightings;
+                heat.setLatLngs(sightings);
+        
+                // Find median to compute a nice heatmap max
+                sightings.sort((a, b) => b[2] - a[2]);
+                if (sightings.length > 0) {
+                  const median = sightings[Math.floor(sightings.length / 2)][2];
+                  heat.setOptions({ max: median });
+                }
+              });
+
+            this.rect = L.rectangle(this.bounds, { color: "#ff2000", weight: 1 }).addTo(this.map);
+
+            this.map.on("click", (e) => {
                 console.log("Map clicked at:", e.latlng);
-                const regionId = `region_${Math.round(e.latlng.lat * 1000)}`;
-                this.$emit("region-selected", { regionId, lat: e.latlng.lat, lng: e.latlng.lng });
+                const size = 20 / Math.pow(2, this.map.getZoom() - 18);
+                const bounds = e.latlng.toBounds(size);
+                this.$emit("region-selected", bounds);
             });
+
+            // Update Leaflet map size once css is loaded
+            addEventListener("load", this.map.invalidateSize.bind(this.map));
         },
     },
     'species-list': {
@@ -258,4 +247,16 @@ app.vue = Vue.createApp(app.data);
 Object.entries(app.components).forEach(([name, component]) => {
     app.vue.component(name, component);
 });
-app.vue.mount("#app");
+app.vue = app.vue.mount("#app");
+
+// Select region from query string
+const urlParams = new URLSearchParams(window.location.search);
+const bbox = urlParams.get('bounds');
+if (bbox) {
+    try {
+        const coords = bbox.split(',');
+        app.vue.selectRegion(L.latLngBounds(L.latLng(coords[1], coords[0]), L.latLng(coords[3], coords[2])));
+    } catch(e) {
+        console.error("Failed to load bounds from query string:", e);
+    }
+}

@@ -46,6 +46,23 @@ from statistics import median
 
 url_signer = URLSigner(session)
 
+# Return a db query that includes only the given partial name or species
+def species_search_filter(nameSearch, nameList):
+    if nameList:
+        return db.sighting.common_name.belongs(nameList.split(','))
+    elif nameSearch:
+        return db.sighting.common_name.contains(nameSearch, case_sensitive=False)
+    else:
+        return True
+
+# Parse [min_lon, min_lat, max_lon, max_lat] from a string
+def parse_bounds(bounds):
+    try:
+        l = [float(x) for x in bounds.split(',')]
+        return l if len(l) == 4 else None
+    except:
+        return None
+
 @action('default')
 @action.uses(db, auth)
 def default():
@@ -66,68 +83,57 @@ def index():
     return dict(
         species_url=URL('api/species_by_region', signer=url_signer),
         trends_url=URL('api/species_trends', signer=url_signer),
-        contributors_url=URL('api/top_contributors', signer=url_signer),
-        check_login_url=URL('api/check_login', signer=url_signer),
+        contributors_url=URL('api/top_contributors', signer=url_signer)
     )
 
 @action('api/species_by_region')
 @action.uses(db, auth.user)
 def species_by_region():
-    latitude = request.params.get('latitude')
-    longitude = request.params.get('longitude')
+    bounds = parse_bounds(request.params.get('bounds'))
+    if not bounds:
+        return dict(error="Missing or invalid bounds")
 
-    if not latitude or not longitude:
-        return dict(error="Latitude and longitude are required")
-
-    try:
-        latitude = float(latitude)
-        longitude = float(longitude)
-    except ValueError:
-        return dict(error="Invalid latitude or longitude format")
-
-    species_data = db.executesql("""
-        SELECT s.common_name, SUM(s.count) AS total_count
-        FROM sighting s
-        JOIN checklist c ON s.event_id = c.event_id
-        WHERE c.latitude BETWEEN ? AND ?
-          AND c.longitude BETWEEN ? AND ?
-        GROUP BY s.common_name
-        """, [latitude - 0.1, latitude + 0.1, longitude - 0.1, longitude + 0.1])
+    total_count = db.sighting.count.sum()
+    species_data = db((db.sighting.event_id == db.checklist.event_id)
+                      & (db.checklist.longitude > bounds[0])
+                      & (db.checklist.latitude > bounds[1])
+                      & (db.checklist.longitude < bounds[2])
+                      & (db.checklist.latitude < bounds[3]))\
+        .select(
+            db.sighting.common_name,
+            total_count,
+            groupby=db.sighting.common_name)
 
     # Format the result as an array of objects
-    formatted_data = [{"common_name": row[0], "total_count": row[1]} for row in species_data]
+    formatted_data = [{"common_name": row.sighting.common_name, "total_count": row[total_count]} for row in species_data]
     return dict(data=formatted_data)
 
 @action('api/species_trends')
 @action.uses(db, auth.user)
 def species_trends():
     species_name = request.params.get('species_name')
-    latitude = request.params.get('latitude')
-    longitude = request.params.get('longitude')
+    if not species_name:
+        return dict(error="Missing species_name")
 
-    if not species_name or not latitude or not longitude:
-        return dict(error="Missing parameters")
-
-    try:
-        latitude = float(latitude)
-        longitude = float(longitude)
-    except ValueError:
-        return dict(error="Invalid latitude or longitude format")
+    bounds = parse_bounds(request.params.get('bounds'))
+    if not bounds:
+        return dict(error="Missing or invalid bounds")
 
     try:
-        logger.info(f"Fetching trends for {species_name} at ({latitude}, {longitude})")
-        trends = db.executesql("""
-            SELECT c.date, SUM(s.count) AS total_count
-            FROM sighting s
-            JOIN checklist c ON s.event_id = c.event_id
-            WHERE s.common_name = ?
-              AND c.latitude BETWEEN ? AND ?
-              AND c.longitude BETWEEN ? AND ?
-            GROUP BY c.date
-            ORDER BY c.date
-            """, [species_name, latitude - 0.1, latitude + 0.1, longitude - 0.1, longitude + 0.1])
+        total_count = db.sighting.count.sum()
+        trends = db((db.sighting.event_id == db.checklist.event_id)
+                        & (db.sighting.common_name == species_name)
+                        & (db.checklist.longitude > bounds[0])
+                        & (db.checklist.latitude > bounds[1])
+                        & (db.checklist.longitude < bounds[2])
+                        & (db.checklist.latitude < bounds[3]))\
+            .select(
+                db.checklist.date,
+                total_count,
+                groupby=db.checklist.date,
+                orderby=db.checklist.date)
 
-        formatted_trends = [{"date": row[0], "total_count": row[1]} for row in trends]
+        formatted_trends = [{"date": row.checklist.date, "total_count": row[total_count]} for row in trends]
         return dict(data=formatted_trends)
     except Exception as e:
         logger.error(f"Error querying trends: {e}")
@@ -136,38 +142,25 @@ def species_trends():
 @action('api/top_contributors')
 @action.uses(db, auth.user)
 def top_contributors():
-    latitude = request.params.get('latitude')
-    longitude = request.params.get('longitude')
+    bounds = parse_bounds(request.params.get('bounds'))
+    if not bounds:
+        return dict(error="Missing or invalid bounds")
 
-    if not latitude or not longitude:
-        return dict(error="Latitude and longitude are required")
-
-    try:
-        latitude = float(latitude)
-        longitude = float(longitude)
-    except ValueError:
-        return dict(error="Invalid latitude or longitude format")
-
-    contributors = db.executesql("""
-        SELECT c.observer_id, COUNT(c.event_id) AS checklist_count
-        FROM checklist c
-        WHERE c.latitude BETWEEN ? AND ?
-          AND c.longitude BETWEEN ? AND ?
-        GROUP BY c.observer_id
-        ORDER BY checklist_count DESC
-        LIMIT 5
-        """, [latitude - 0.1, latitude + 0.1, longitude - 0.1, longitude + 0.1])
+    checklist_count = db.checklist.id.count()
+    contributors = db((db.checklist.longitude > bounds[0])
+                      & (db.checklist.latitude > bounds[1])
+                      & (db.checklist.longitude < bounds[2])
+                      & (db.checklist.latitude < bounds[3]))\
+        .select(
+            db.checklist.observer_id,
+            checklist_count,
+            groupby=db.checklist.observer_id,
+            orderby=~checklist_count,
+            limitby=(0,5))
 
     # Format the result as an array of objects
-    formatted_contributors = [{"observer_id": row[0], "checklist_count": row[1]} for row in contributors]
+    formatted_contributors = [{"observer_id": row.checklist.observer_id, "checklist_count": row[checklist_count]} for row in contributors]
     return dict(data=formatted_contributors)
-
-@action('api/check_login')
-@action.uses(auth)
-def check_login():
-    logger.info("check_login endpoint accessed")
-    user_email = get_user_email()
-    return dict(logged_in=user_email is not None)
 
 @action("statistics")
 @action.uses("statistics.html", db, auth, url_signer)
@@ -235,20 +228,11 @@ def statistics():
         my_callback_url=URL("my_callback", signer=url_signer),
     )
 
-@action("sightings")
+@action("api/sightings")
 @action.uses(db)
 def get_sightings():
     # Get filters
-    filterString = request.query.get("s", "").upper()
-    filterList = request.query.get("l")
-    if filterList != None:
-        filterList = filterList.split(",")
-
-    filter = True
-    if filterString:
-        filter &= db.sighting.common_name.contains(filterString, case_sensitive=False)
-    if filterList:
-        filter &= db.sighting.common_name.belongs(filterList)
+    filter = species_search_filter(request.query.get("search"), request.query.get("list"))
 
     # Get all sightings and their coordinates
     totalSightings = db.sighting.count.sum()
@@ -262,12 +246,5 @@ def get_sightings():
     )
 
     # Serve list of [lat, lng, count]
-    result = map(
-        lambda row: [
-            row.checklist.latitude,
-            row.checklist.longitude,
-            row[totalSightings],
-        ],
-        rows,
-    )
+    result = [[row.checklist.latitude, row.checklist.longitude, row[totalSightings]] for row in rows]
     return dict(sightings=result)
