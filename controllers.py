@@ -42,7 +42,7 @@ from py4web.utils.url_signer import URLSigner
 from py4web.utils.form import Form, FormStyleBulma
 from pydal.validators import *
 from .models import get_user_email
-from statistics import median
+import json
 
 url_signer = URLSigner(session)
 
@@ -75,11 +75,8 @@ def default():
 @action("index")
 @action.uses("index.html", db, auth, url_signer)
 def index():
-    names = map(
-        lambda row: row.name,
-        db(db.species).select(db.species.name, orderby=db.species.name),
-    )
-    return dict(speciesList='["' + '","'.join(names) + '"]')
+    names = [row.name for row in db(db.species).select(db.species.name, orderby=db.species.name)]
+    return dict(speciesList=json.dumps(names))
 
 
 @action("location")
