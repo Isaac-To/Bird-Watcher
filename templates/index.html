@@ -4,6 +4,11 @@
 [v-cloak] {
      display: none;
 }
+#map {
+     height: 400px;
+     width: 100%;
+     margin-bottom: 20px;
+}
 </style>
 
 <div class="section" id="app" v-cloak>
@@ -54,18 +59,18 @@
 
 
 [[block page_head]]
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="js/leaflet-heat.js"></script>
+<link rel="stylesheet" href="css/leaflet.css"/>
 [[end]]
 
 
 [[block page_scripts]]
 <script>
-  let checklist_url = "[[=URL('checkist')]]";
-  let statistics_url = "[[=URL('statistics')]]";
-  let sightings_url = "[[=URL('sightings')]]";
+  let checklist_url = "[[=URL('checklist')]]";
+  let location_url = "[[=URL('location')]]";
+  let sightings_url = "[[=URL('api/sightings')]]";
   let speciesList = [[=XML(speciesList)]];
 </script>
+<script src="js/leaflet.js"></script>
+<script src="js/leaflet-heat.js"></script>
 <script src="js/index.js"></script>
 [[end]]

@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <base href="[[=URL('static')]]/">
+    <!-- Ensure the base URL is correct -->
+    <base href="/Bird-Watcher/static/">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="shortcut icon" href="data:image/x-icon;base64,AAABAAEAAQEAAAEAIAAwAAAAFgAAACgAAAABAAAAAgAAAAEAIAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAAAAA=="/>
+
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="css/bulma.css">
     <link rel="stylesheet" href="font-awesome-4.7.0/css/font-awesome.css">
     <link rel="stylesheet" href="css/leaflet.css"/>
@@ -38,7 +41,7 @@
 
       <div id="the-navbar-menu" class="navbar-menu">
         <div class="navbar-start">
-          [[block page_menu_items]]<!-- individual pages can add menu items here -->[[end]]
+          [[block page_menu_items]]<!-- Individual pages can add menu items here -->[[end]]
         </div>
 
         <div class="navbar-end">
@@ -52,8 +55,7 @@
                   <div class="navbar-dropdown">
                     <a class="navbar-item" href="[[=URL('auth/logout')]]">Logout</a>
                     <a class="navbar-item" href="[[=URL('auth/profile')]]">Profile</a>
-                    <a class="navbar-item" href="[[=URL('auth/change_password')]]">Change Password</a></li>
-
+                    <a class="navbar-item" href="[[=URL('auth/change_password')]]">Change Password</a>
                   </div>
                 </div>
               [[else:]]
@@ -66,9 +68,9 @@
       </div>
     </nav>
 
-    <!-- beginning of HTML inserted by extending template -->
+    <!-- Main content inserted by extending template -->
     [[include]]
-    <!-- end of HTML inserted by extending template -->
+
     <footer class="footer">
       <div class="content has-text-centered">
         Made with <a href="https://py4web.com">py4web</a>.
@@ -76,10 +78,11 @@
       </div>
     </footer>
   </body>
+
+  <!-- JavaScript files -->
   <script src="js/sugar.min.js"></script>
   <script src="js/axios.min.js"></script>
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.min.js"></script> -->
-  <script src="js/vue3.js"></script> 
+  <script src="js/vue3.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/leaflet.js"></script>
   <script src="js/d3.js"></script>
