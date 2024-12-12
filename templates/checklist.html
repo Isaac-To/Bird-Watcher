@@ -1,0 +1,100 @@
+[[extend 'layout.html']]
+
+<style>
+[v-cloak] {
+     display: none;
+}
+</style>
+
+<div class="section" id="app" v-cloak>
+  [[if not globals().get('user'):]]
+  <div class="notification is-warning">
+    <p>You must be logged in to access this feature. <a href="/Bird-Watcher/auth/login">Login</a></p>
+  </div>
+  [[else:]]
+  <div>
+    <h1 class="title"><i class="fa-solid fa-dove"></i> Birdwatching Checklist</h1>
+
+    <div>
+      <h2 style="font-weight: bold; font-size: 1.5rem;">Search for Species</h2>
+      <div class="field">
+        <div class="control">
+          <input class="input" type="text" v-model="searchTerm" placeholder="Search for a species...">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h2 style="font-weight: bold; font-size: 1.5rem;">Species List</h2>
+      <div v-for="(species, index) in filteredSpecies" :key="index" class="field is-horizontal">
+        <div class="field-body">
+          <div class="field">
+            <label class="label">{{ species }}</label>
+          </div>
+          <div class="field">
+            <input class="input" type="number" v-model="birdCounts[species]" min="0" placeholder="Enter count">
+          </div>
+          <div class="field">
+            <button class="button is-info" @click="incrementCount(species)">+1</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="button is-primary" @click="submitChecklist">Submit Checklist</button>
+  </div>
+  [[pass]]
+
+  
+  
+</div>
+  
+  
+  
+  
+  <!--
+  <h1 class="title">Enter Checklist</h1>
+  <div>
+    <label>Search for Species:</label>
+    <input type="text" v-model="search" placeholder="Enter species name">
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Species</th>
+        <th>Count</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="species in filteredSpecies" :key="species.id">
+        <td>{{ species.name }}</td>
+        <td>{{ species.count || 0 }}</td>
+        <td><button @click="increment(species)">+1</button></td>
+      </tr>
+    </tbody>
+  </table>
+  <button @click="submitChecklist">Submit</button>
+-->
+</div>
+
+[[block page_head]]
+<link rel="stylesheet" href="css/leaflet.css"/>
+[[end]]
+
+
+[[block page_scripts]]
+<!-- Loads the checklist-specific js for Vue -->
+
+<script>
+  let speciesList = JSON.parse('[[=speciesList]]');
+  let checklist_url = "[[=URL('checklist')]]";
+</script>
+<script src="js/checklist.js"></script>
+<!--
+<script>
+  let my_callback_url = "[[=XML(my_callback_url)]]";
+</script>
+<script src="js/checklist.js"></script>
+-->
+[[end]]
