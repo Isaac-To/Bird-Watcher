@@ -13,7 +13,7 @@
     <!-- <div><h2 class="subtitle is-2">User Information</h2></div> -->
     <div class="is-flex">
       <div class="panel">
-        <div class="panel-heading">Your Observations over time</div>
+        <div class="panel-heading">Your Observations Over Time</div>
         <div class="panel-block is-flex">
           <div class="m-4 has-text-centered">
             <h1 class="is-size-1 has-text-weight-bold">
@@ -46,43 +46,55 @@
           </table>
         </div>
       </div>
-      <div id="sightings-by-day-container"></div>
+      <div class="panel ml-5" style="width: 100%;">
+        <div class="panel-heading">Time Spent Each Month</div>
+        <canvas class="panel-block" id="chart"></canvas>
+      </div>
     </div>
     <hr class="is-divider" />
-    <div class="panel">
-      <h2 class="panel-heading">Species Seen:</h2>
-      <div class="panel-block width">[[=searchForm]]</div>
-      [[ for species, sightings in speciesSeen.items() : ]]
-      <div class="panel-block" id="[[=species]]">
-        [[ =species ]]
-        <div id="map-container"></div>
-        <ul class="list ml-2 is-flex">
-          [[ for date, (longitude, latitude) in sightings : ]]
-          <li>
-            <button
-              type="button"
-              class="button list-item m-2"
-              onclick="showMap('[[=species]]', [[=latitude]], [[=longitude]])"
-            >
-              [[ =date ]]
-            </button>
-          </li>
-          [[ pass ]]
-        </ul>
+    <div class="columns p-0 m-1">
+      <div class="column panel p-0">
+        <h2 class="panel-heading">Species Seen:</h2>
+        <div class="m-3" style="width: 90%">[[=searchForm]]</div>
+        [[ for species, sightings in speciesSeen.items() : ]]
+        <div class="panel-block" id="[[=species]]">
+          [[ =species ]]
+          <ul class="list ml-2 is-flex">
+            [[ for date, (longitude, latitude) in sightings : ]]
+            <li>
+              <button
+                type="button"
+                class="button list-item m-2"
+                onclick="showMap('[[=species]]', [[=latitude]], [[=longitude]])"
+              >
+                [[ =date ]]
+              </button>
+            </li>
+            [[ pass ]]
+          </ul>
+        </div>
+        [[ pass ]]
       </div>
-      [[ pass ]]
+      <div class="column p-0 ml-5" id="map-container"></div>
     </div>
   </div>
 </div>
+
+[[block page_scripts]]
+<!-- Loads the index-specific js for Vue -->
+<script>
+  let my_callback_url = "[[=XML(my_callback_url)]]";
+  let speciesList = "";
+</script>
+<script src="js/index.js"></script>
 <script>
   function showMap(species, latitude, longitude) {
-    speciesTree = document.getElementById(species);
-    let mapElements = speciesTree.querySelector('#map-container');
+    let mapElements = document.getElementById("map-container");
     mapElements.innerHTML = '';
     let mapElement = document.createElement('div');
     mapElement.id = 'map';
     mapElement.style.width = '100%';
-    mapElement.style.height = '20vh';
+    mapElement.style.height = '50vh';
     mapElements.appendChild(mapElement);
     // Create new map instance
     const markerOptions = {
@@ -96,15 +108,30 @@
     }).addTo(map);
     L.marker([longitude, latitude], markerOptions).addTo(map).bindPopup("Location").openPopup();
   }
-
-  const chartContainer = document.getElementById('sightings-by-day-container');
 </script>
-
-[[block page_scripts]]
-<!-- Loads the index-specific js for Vue -->
 <script>
-  let my_callback_url = "[[=XML(my_callback_url)]]";
-  let speciesList = "";
+  const chartContainer = document.getElementById("chart");
+
+  new Chart(chartContainer, {
+    type: "line",
+    data: {
+      labels: [[=list(range(1, 13))]],
+      datasets: [
+        {
+          label: "Minutes bird watching",
+          data: [[=list(timeByMonth.values())]],
+          borderWidth: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+        },
+      },
+    },
+  });
 </script>
-<script src="js/index.js"></script>
 [[end]]
