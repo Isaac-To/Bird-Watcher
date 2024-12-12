@@ -65,7 +65,7 @@ def statistics():
         redirect(URL("index"))
     # Get list of all sightings by the user
     events = db(
-        db.checklist.observer_id == auth.current_user.get("id")
+        db.checklist.observer_id == 856612
     ).select().sort(lambda row: row.date).as_list()
 
     # Sightings by day

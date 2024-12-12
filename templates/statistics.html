@@ -10,54 +10,62 @@
   <!-- Put here your Vue.js template -->
   <h1 class="title is-1">Statistics</h1>
   <div>
-    <div><h2 class="subtitle is-2">User Information</h2></div>
-    <div>
-      <div class="card m-2 p-4">
-        <h3 class="subtitle is-3"># of Bird Sightings over Time</h3>
-        <table>
-          <tr>
-            <th>Date</th>
-            <th>&nbsp;&nbsp;&nbsp;&nbsp;# of Sightings</th>
-          </tr>
-          [[ for day, count in sightingsByDay.items() : ]]
-          <tr>
-            <td>[[=day]]</td>
-            <td>&nbsp;&nbsp;&nbsp;&nbsp;[[=count]]</td>
-          </tr>
-          [[ pass ]]
-        </table>
+    <!-- <div><h2 class="subtitle is-2">User Information</h2></div> -->
+    <div class="is-flex">
+      <div class="panel">
+        <div class="panel-heading">Your Observations over time</div>
+        <div class="panel-block is-flex">
+          <div class="m-4 has-text-centered">
+            <h1 class="is-size-1 has-text-weight-bold">
+              [[=round(sum(timeByDay.values())/len(timeByDay), 2)]]
+            </h1>
+            minutes per day
+          </div>
+          <div class="m-4 has-text-centered">
+            <h1 class="is-size-1 has-text-weight-bold">
+              [[=round(sum(sightingsByDay.values())/len(sightingsByDay), 2)]]
+            </h1>
+            sightings per day
+          </div>
+        </div>
+        <div class="panel-block">
+          <table class="table">
+            <tr>
+              <th>Date</th>
+              <th># of Sightings</th>
+              <th># of Minutes</th>
+            </tr>
+            [[ for (day, count), (day, time) in zip(sightingsByDay.items(),
+            timeByDay.items()) : ]]
+            <tr>
+              <td>[[=day]]</td>
+              <td>[[=count]]</td>
+              <td>[[=time]]</td>
+            </tr>
+            [[ pass ]]
+          </table>
+        </div>
       </div>
-      <div class="card m-2 p-4">
-        <h3 class="subtitle is-3">Time Spent</h3>
-        <table>
-          <tr>
-            <th>Date</th>
-            <th>&nbsp;&nbsp;&nbsp;&nbsp; Minutes</th>
-          </tr>
-          [[ for day, time in timeByDay.items() : ]]
-          <tr>
-            <td>[[=day]]</td>
-            <td>&nbsp;&nbsp;&nbsp;&nbsp;[[=time]]</td>
-          </tr>
-          [[ pass ]]
-        </table>
-      </div>
-      <div class="card m-2 p-4">
-        <h3 class="subtitle is-3">Heat Map</h3>
-      </div>
+      <div id="sightings-by-day-container"></div>
     </div>
     <hr class="is-divider" />
-    <div>
-      <h2 class="subtitle is-2">Species Seen:</h2>
-      [[=searchForm]]
+    <div class="panel">
+      <h2 class="panel-heading">Species Seen:</h2>
+      <div class="panel-block width">[[=searchForm]]</div>
       [[ for species, sightings in speciesSeen.items() : ]]
-      <div class="box" id="[[=species]]">
-        <h3 class="subtitle is-3">[[ =species ]]</h3>
+      <div class="panel-block" id="[[=species]]">
+        [[ =species ]]
         <div id="map-container"></div>
-        <ul class="ml-2 is-flex">
+        <ul class="list ml-2 is-flex">
           [[ for date, (longitude, latitude) in sightings : ]]
           <li>
-            <button type="button" class="button m-2" onclick="showMap('[[=species]]', [[=latitude]], [[=longitude]])">[[ =date ]]</button>
+            <button
+              type="button"
+              class="button list-item m-2"
+              onclick="showMap('[[=species]]', [[=latitude]], [[=longitude]])"
+            >
+              [[ =date ]]
+            </button>
           </li>
           [[ pass ]]
         </ul>
@@ -88,6 +96,8 @@
     }).addTo(map);
     L.marker([longitude, latitude], markerOptions).addTo(map).bindPopup("Location").openPopup();
   }
+
+  const chartContainer = document.getElementById('sightings-by-day-container');
 </script>
 
 [[block page_scripts]]
