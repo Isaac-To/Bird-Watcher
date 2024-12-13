@@ -6,7 +6,7 @@
   }
 </style>
 
-<div class="section" id="app" v-cloak>
+<div class="section" id="app">
   <!-- Put here your Vue.js template -->
   <h1 class="title is-1">Statistics</h1>
   <div>
@@ -95,7 +95,6 @@
   let my_callback_url = "[[=XML(my_callback_url)]]";
   let speciesList = "";
 </script>
-<script src="js/index.js"></script>
 <script>
   function showMap(species, latitude, longitude) {
     let mapElements = document.getElementById("map-container");
