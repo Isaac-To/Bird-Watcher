@@ -45,8 +45,10 @@
 
 [[block page_scripts]]
 <script>
-  let checklist_url = "[[=URL('checklist/submit')]]";
-  let my_checklist_url = "[[=URL('my_checklists')]]";
+  let checklist_url = "[[=URL('checklist')]]";
+  let get_checklists_url = "[[=URL('api/get_checklists')]]";
+  let submit_url = "[[=URL('checklist/submit')]]";
+  let my_checklists_url = "[[=URL('my_checklists')]]";
   let speciesList = [[=XML(speciesList)]];
   let lat = parseFloat("[[=lat]]");
   let lng = parseFloat("[[=lng]]");

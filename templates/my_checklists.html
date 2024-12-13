@@ -33,7 +33,9 @@
 
 [[block page_scripts]]
 <script>
-  let my_checklist_url = "[[=URL('my_checklists')]]";
+  let get_checklist_url = "[[=URL('api/get_checklists')]]";
+  let delete_url = "[[=URL('my_checklist/delete')]]";
+  let edit_url = "[[=URL('checklist')]]";
 </script>
 <script src="js/my_checklist.js"></script>
 [[end]]

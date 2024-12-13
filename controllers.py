@@ -113,7 +113,6 @@ def checklist():
         checklist_data=checklist_data,  # Pass checklist data for editing
     )
 
-
 @action("checklist/submit", method=["POST"])
 @action.uses(db, auth.user)
 def submit_checklist():
@@ -122,6 +121,13 @@ def submit_checklist():
     data = request.json
 
     try:
+        # Delete previous checklist, if editing
+        edit_id = data.get("editId", None)
+        if edit_id != None:
+            num_deleted = db((db.checklist.id == edit_id) & (db.checklist.observer_id == user_id)).delete()
+            if num_deleted > 0:
+                db(db.sighting.event_id == edit_id).delete()
+
         # Insert a new checklist into the database
         checklist_id = db.checklist.insert(
             latitude=data.get("lat"),
@@ -130,6 +136,7 @@ def submit_checklist():
             observer_id=user_id,
             duration_minutes=data.get("duration", 60), # default to 60 if no duration given
         )
+        db(db.checklist.id == checklist_id).update(event_id=checklist_id)
 
         # Insert species counts into the sightings table
         for species_data in data.get("species", []):
@@ -148,18 +155,27 @@ def submit_checklist():
         logger.error(f"Error submitting checklist: {e}")
         return dict(success=False, error=str(e))
 
-
 @action("my_checklists")
 @action.uses("my_checklists.html", db, auth.user, url_signer)
 def my_checklists():
     if not auth.user:
         redirect(URL('login'))  # Redirect to login page if not logged in
     
+    return dict()
+    
+
+@action("api/get_checklists")
+@action.uses(db, auth.user)
+def get_checklists():
     """Display the checklists submitted by the current user."""
     user_id = auth.current_user.get("id")
+    edit_id = request.query.get("edit_id", None)
 
     # Fetch the checklists submitted by the user
-    checklists = db(db.checklist.observer_id == user_id).select()
+    query = db.checklist.observer_id == user_id
+    if edit_id != None:
+        query &= db.checklist.id == edit_id
+    checklists = db(query).select()
 
     checklists_data = []
     for checklist in checklists:
@@ -172,29 +188,28 @@ def my_checklists():
             "id": checklist.id,
             "date": checklist.date.strftime("%Y-%m-%d %H:%M:%S"),
             "location": f"Lat: {checklist.latitude}, Lng: {checklist.longitude}",
+            "latitude": checklist.latitude,
+            "longitude": checklist.longitude,
             "duration": checklist.duration_minutes,
             "species": species_data,
         })
 
     return dict(checklists=checklists_data)
 
-
-@action("my_checklist/delete/<checklist_id:int>")
+@action("my_checklist/delete/<checklist_id:int>", method="DELETE")
 @action.uses(db, auth.user)
 def delete_checklist(checklist_id):
     """Delete a specific checklist owned by the user."""
-    try:
-        # Delete the sightings related to this checklist
-        db(db.sighting.event_id == checklist_id).delete()
+    user_id = auth.current_user.get("id")
+    
+    # Delete the checklist itself
+    num_deleted = db((db.checklist.id == checklist_id) & (db.checklist.observer_id == user_id)).delete()
 
-        # Delete the checklist itself
-        db(db.checklist.id == checklist_id).delete()
-
-        db.commit()
-        return dict(success=True)
-    except Exception as e:
-        logger.error(f"Error deleting checklist: {e}")
-        return dict(success=False, error=str(e))
+    # Delete the sightings related to this checklist
+    if num_deleted > 0:
+        db(db.sighting.id == checklist_id).delete()
+    
+    return dict(success=num_deleted>0)
     
 
 @action("location")
