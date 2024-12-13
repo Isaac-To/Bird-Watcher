@@ -401,10 +401,18 @@ def statistics():
             timeByDay[date] = 0
         timeByDay[date] += event["duration_minutes"]
 
+    timeByMonth = {}
+    for event in events:
+        date = event["date"].date().month
+        if date not in timeByMonth:
+            timeByMonth[date] = 0
+        timeByMonth[date] += event["duration_minutes"]
+
     return dict(
         # COMPLETE: return here any signed URLs you need.
         sightingsByDay=sightingsByDay,
         timeByDay=timeByDay,
+        timeByMonth=timeByMonth,
         speciesSeen=speciesSeen,
         searchForm=searchForm,
         my_callback_url=URL("my_callback", signer=url_signer),
