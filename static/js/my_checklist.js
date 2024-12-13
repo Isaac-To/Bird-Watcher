@@ -1,6 +1,3 @@
-
-
-
 "use strict";
 
 const app = {};
@@ -16,44 +13,33 @@ window.addEventListener("DOMContentLoaded", () => {
     methods: {
       // Fetch the user's checklists
       fetchChecklists() {
-        axios
-          .get(checklist_data_url)
-          .then((response) => {
-            this.checklists = response.data || [];
+        axios.get(my_checklist_url)
+          .then(response => {
+            this.checklists = response.data.checklists;
           })
           .catch((error) => {
             console.error("Error fetching checklists:", error);
-            if (error.response) {
-              console.error("Server responded with status:", error.response.status);
-              console.error("Response data:", error.response.data);
-            }
-
-
 
           });
       },
 
-      // Delete a checklist
-  deleteChecklist(checklistId) {
-    if (confirm("Are you sure you want to delete this checklist?")) {
-      axios.delete(`/my_checklist/delete/${checklistId}`)
-        .then(() => {
-          this.fetchChecklists();  // Refresh the list of checklists after deletion
-        })
-        .catch(error => {
-          console.error("Error deleting checklist:", error);
-        });
-    }
-  }
-
-
-      // Redirect to the checklist page
-      redirectChecklist(latlng, checklistID) {
-        const query =
-          "?lat=" + latlng.lat.toFixed(5) + "&lng=" + latlng.lng.toFixed(5) + "&edit_id"+ checklistId;
-
-        window.location.href = checklist_url + query;
+      // Navigate to the checklist page for editing
+      editChecklist(checklistId) {
+        window.location.href = `/checklist?edit_id=${checklistId}`;
       },
+
+      // Delete a checklist
+      deleteChecklist(checklistId) {
+          if (confirm("Are you sure you want to delete this checklist?")) {
+            axios.delete(`/my_checklist/delete/${checklistId}`)
+              .then(() => {
+                this.fetchChecklists();  // Refresh the list of checklists after deletion
+          })
+          .catch(error => {
+            console.error("Error deleting checklist:", error);
+          });
+        }
+      }
 
     },
     mounted() {
@@ -61,6 +47,6 @@ window.addEventListener("DOMContentLoaded", () => {
     },
   });
 
-  app.vue.mount("#my-checklists-app");
+  app.vue.mount("#my-checklist-app");
 });
 

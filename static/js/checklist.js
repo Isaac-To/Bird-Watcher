@@ -12,6 +12,7 @@ window.addEventListener("DOMContentLoaded", () => {
         searchQuery: "",
         lat: lat, // Latitude passed from the server
         lng: lng, // Longitude passed from the server
+        duration:null, //duration bound to input field
         editId: new URLSearchParams(window.location.search).get('edit_id'),
       };
     },
@@ -35,9 +36,10 @@ window.addEventListener("DOMContentLoaded", () => {
         if (this.editId) {
           axios.get(`${checklist_url}?edit_id=${this.editId}`)
             .then(response => {
-              const checklist = response.data;
+              const checklist = response.data.checklist;
               this.lat = checklist.latitude;
               this.lng = checklist.longitude;
+              this.duration = checklist.duration || 60; //default 60 minutes
 
               // Pre-fill the bird counts with the current data
               checklist.species.forEach(species => {
@@ -57,9 +59,16 @@ window.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
+        // If no duration is provided, set it to 60 minutes by default
+        if (!this.duration) {
+          this.duration = 60;
+        }
+
+
         const payload = {
           lat: this.lat,
           lng: this.lng,
+          duration: this.duration, //Make sure duration is included
           species: Object.entries(this.birdCounts)
             .filter(([_, count]) => count > 0)
             .map(([name, count]) => ({ name, count })),
@@ -68,8 +77,7 @@ window.addEventListener("DOMContentLoaded", () => {
         axios
           .post(checklist_url, payload)
           .then(() => {
-            alert("Checklist submitted successfully!");
-            
+            //alert("Checklist submitted successfully!");
             window.location.href = my_checklist_url;
 
           })
@@ -79,6 +87,9 @@ window.addEventListener("DOMContentLoaded", () => {
           });
       },
     },
+    mounted() {
+      this.fetchChecklistData();  // Fetch checklist data if editing
+    }
   });
 
   app.vue.mount("#checklist-app");

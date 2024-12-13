@@ -128,6 +128,7 @@ def submit_checklist():
             longitude=data.get("lng"),
             date=datetime.utcnow(),
             observer_id=user_id,
+            duration_minutes=data.get("duration", 60), # default to 60 if no duration given
         )
 
         # Insert species counts into the sightings table
@@ -177,46 +178,8 @@ def my_checklists():
 
     return dict(checklists=checklists_data)
 
-    
 
-'''
-@action("my_checklist/data", method=["GET"])
-@action.uses(db, auth.user, url_signer)
-def my_checklist_data():
-    """Retrieve all checklists submitted by the logged-in user."""
-    print(auth.current_user)
-    if not auth.user:
-        redirect(URL('login'))  # Redirect if the user is not logged in
-    print(f"User ID: {auth.current_user.get('id')}") 
-    # Fetch all checklists for the logged-in user, sorted by date
-    checklists = (
-        db(db.checklist.observer_id == auth.current_user.get("id"))
-        .select()
-        .sort(lambda row: row.date)
-        .as_list()  # Convert to a list of dictionaries
-    )
-    print(f"Checklists fetched: {checklists}")
-    # Return the checklists as a JSON response
-    return response.json(checklists)  # Return checklists as JSON
-
-
-    #user_id = auth.current_user.get("id")
-    #checklists = db(db.checklist.observer_id == user_id).select()
-
-
-    # Format checklists
-    formatted_checklists = [
-        dict(
-            id=row.id,
-            date=row.date.strftime("%Y-%m-%d %H:%M:%S") if row.date else "N/A",
-            location=f"Lat: {row.latitude}, Lng: {row.longitude}",
-        )
-        for row in checklists
-    ]
-    return formatted_checklists
-'''
-
-@action("my_checklist/delete/<checklist_id:int>", method=["POST"])
+@action("my_checklist/delete/<checklist_id:int>")
 @action.uses(db, auth.user)
 def delete_checklist(checklist_id):
     """Delete a specific checklist owned by the user."""
@@ -233,7 +196,7 @@ def delete_checklist(checklist_id):
         logger.error(f"Error deleting checklist: {e}")
         return dict(success=False, error=str(e))
     
-    
+
 @action("location")
 @action.uses("location.html", db, auth, url_signer)
 def index():
