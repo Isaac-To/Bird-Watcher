@@ -1,97 +1,41 @@
 [[extend 'layout.html']]
 
-<style>
-[v-cloak] {
-     display: none;
-}
-</style>
-
-<div class="section" id="app" v-cloak>
-  <h2>My Checklist</h2>
-
-  <!-- Table to display the user's checklist -->
-  <table>
-    <thead>
-      <tr>
-        <th>Species</th>
-        <th>Count</th>
-        <th>Location</th>
-        <th>Date</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="sighting in checklist" :key="sighting.id">
-        <td>{{ sighting.species }}</td>
-        <td>{{ sighting.count }}</td>
-        <td>{{ sighting.location }}</td>
-        <td>{{ sighting.date }}</td>
-      </tr>
-    </tbody>
-  </table>
-
+<div class="section" id="my-checklist-app" v-cloak>
+  <div class="container">
+    <h1 class="title">My Checklists</h1>
+    <!-- Checklist Table -->
+    <table class="table is-fullwidth">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Location</th>
+          <th>Duration</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="checklist in checklists" :key="checklist.id">
+          <td>{{ checklist.date }}</td>
+          <td>{{ checklist.location }}</td>
+          <td>{{ checklist.duration }} minutes</td>
+          <td>
+            <!-- Edit Button -->
+            <button class="button is-info" @click="editChecklist(checklist.id)">Edit</button>
+            
+            <!-- Delete Button -->
+            <button class="button is-danger" @click="deleteChecklist(checklist.id)">Delete</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
-
-
-
-  <!--
-  [[if not globals().get('user'):]]
-  <div class="notification is-warning">
-    <p>You must be logged in to access this feature. <a href="/Bird-Watcher/auth/login">Login</a></p>
-  </div>
-  [[else:]]
-  <div>
-    <h1 class="title"><i class="fa-solid fa-list"></i> My Birdwatching Checklists</h1>
-
-    <div v-if="checklists.length === 0">
-      <p>No checklists found.</p>
-    </div>
-
-    <div v-for="(checklist, index) in checklists" :key="index" class="box">
-      <h2 class="subtitle">Checklist ID: {{ checklist.id }}</h2>
-      <div v-for="(count, species) in checklist.sightings" :key="species">
-        <p>{{ species }}: {{ count }} birds</p>
-      </div>
-      <button class="button is-danger" @click="deleteChecklist(checklist.id)">Delete</button>
-    </div>
-  </div>
-  [[pass]]
-  -->
 </div>
 
-
-
 [[block page_scripts]]
-<!-- Loads the mychecklist-specific js for Vue -->
-<script>
-  new Vue({
-    el: '#app',
-    data: {
-      checklist: [],  // Holds the user's checklist data
-    },
-    mounted() {
-      this.loadChecklist();
-    },
-    methods: {
-      // Fetch user's checklist from the backend (example API)
-      loadChecklist() {
-        fetch('/api/my_checklist')
-          .then(response => response.json())
-          .then(data => {
-            this.checklist = data;
-          })
-          .catch(error => {
-            console.error('Error loading checklist:', error);
-          });
-      }
-    }
-  });
-</script>
-<!--
-<script>
-  let checklists = Json.parse('[[=checklists]]');
-  let delete_checklist_url = "[[=URL('delete_checklist')]]";
-</script>
 <script src="js/my_checklist.js"></script>
--->
-
 [[end]]
+
+
+
+
+

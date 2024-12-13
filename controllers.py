@@ -25,7 +25,7 @@ session, db, T, auth, and tempates are examples of Fixtures.
 Warning: Fixtures MUST be declared with @action.uses({fixtures}) else your app will result in undefined behavior
 """
 
-from py4web import action, request, abort, redirect, URL, Field
+from py4web import action, request, response, abort, redirect, URL, Field
 from yatl.helpers import A
 from .common import (
     db,
@@ -42,6 +42,7 @@ from py4web.utils.url_signer import URLSigner
 from py4web.utils.form import Form, FormStyleBulma
 from pydal.validators import *
 from .models import get_user_email
+from datetime import datetime
 import json
 
 url_signer = URLSigner(session)
@@ -78,148 +79,161 @@ def index():
     names = [row.name for row in db(db.species).select(db.species.name, orderby=db.species.name)]
     return dict(speciesList=json.dumps(names))
 
+@action('current_time')
+def current_time():
+    # Use datetime directly in controllers.py
+    now = datetime.now()
+    formatted_time = now.strftime("%Y-%m-%d %H:%M:%S")
+    return dict(time=formatted_time)
 
 @action("checklist", method=["GET", "POST"])
-@action.uses("checklist.html", db, auth, url_signer)
+@action.uses("checklist.html", db, auth.user, url_signer)
 def checklist():
-    if request.method == "POST":
-        # Get form data from the checklist submission
-        lat = request.json.get("lat")
-        lng = request.json.get("lng")
-        bird_counts = request.json.get("birdCounts")
+    """Checklist page where users can submit or edit sightings."""
+    # Ensure the user is logged in
+    if not auth.current_user:
+        redirect(URL("auth/login"))
 
-        # Save checklist data to the database
-        checklist_data = {
-            'observer_id': auth.current_user.get("id"),  # Ensure we use the current logged-in user
-            'latitude': lat,
-            'longitude': lng,
-            'sightings': json.dumps(bird_counts),  # Save bird counts as JSON
-        }
-        db.checklist.insert(**checklist_data)
+    # Get species list for checklist dropdown
+    species = [row.name for row in db(db.species).select(db.species.name, orderby=db.species.name)]
 
-        # Redirect to My Checklists page
-        return redirect(URL("my_checklists"))
+    # Latitude and longitude passed as query params
+    lat = request.query.get("lat", None)
+    lng = request.query.get("lng", None)
+    edit_id = request.query.get("edit_id", None)
 
-    # Pass species list to the checklist page
-    species_list = [species.name for species in db().select(db.species.name)]
-    return dict(speciesList=json.dumps(species_list))
+    checklist_data = None
+    if edit_id:
+        checklist_data = db(db.checklist.id == edit_id).select().first()  # Fetch checklist data for editing
 
-
-@action("my_checklists", method=["GET", "POST"])
-@action.uses("my_checklist.html", db, auth, url_signer)
-def my_checklists():
-    # Fetch checklists for the current user
-    user_id = auth.current_user.get("id")
-    checklists = db(db.checklist.user_id == user_id).select()
-
-    # Format checklist data if needed, for example, parsing the sightings field
-    formatted_checklists = []
-    for checklist in checklists:
-        sightings = json.loads(checklist.sightings)
-        formatted_checklists.append({
-            "id": checklist.id,
-            "sightings": sightings,
-            "date": checklist.date,
-            "location": (checklist.latitude, checklist.longitude),
-        })
-
-    return dict(checklists=json.dumps(formatted_checklists))
-
-
-@action("delete_checklist", method=["DELETE"])
-@action.uses(db, auth, url_signer)
-def delete_checklist():
-    checklist_id = request.json.get("id")
-    db(db.checklist.id == checklist_id).delete()
-    return dict(status="success")
-
-
-@action("checklist/<checklist_id>", method=["GET"])
-@action.uses(db, url_signer)
-def get_checklist(checklist_id):
-    checklist = db(db.checklist.id == checklist_id).select().first()
-    if checklist:
-        checklist_data = json.loads(checklist.sightings)
-        return dict(checklist=checklist, sightings=checklist_data)
-    return dict(error="Checklist not found")
-
-
-
-
-
-
-'''
-@action('checklist', method=['GET', 'POST'])
-@action.uses('checklist.html', db, auth, session, url_signer)
-def checklist():
-    
-    #Checklist page where users can log bird sightings. The page requires the user to be logged in.
-    user_email = get_user_email()
-    if not user_email:
-        redirect(URL('index'))  # Redirect to index if not logged in
-
-    # Fetch all species from the database for the dropdown/search bar
-    species = db(db.species.id > 0).select().as_list()
-
-    #Generating signer URL for callback
-    my_callback_url = URL("submit_checklist", signer=url_signer)
-
-    # Render the checklist template with the species data
-    return dict(species=species, my_callback_url=my_callback_url)
-
-@action('my_checklists', method=['GET', 'POST'])
-@action.uses('my_checklist.html', db, auth, session, url_signer)
-def my_checklists():
-    
-    #Page to view, edit, and delete checklists submitted by the user.
-    user_email = get_user_email()
-    if not user_email:
-        redirect(URL('index'))  # Redirect to index if not logged in
-
-    # Query to fetch user checklists
-    query = db.checklist.observer_id == auth.current_user.get('id')
-
-    # Use py4web's Grid for managing checklists
-    grid = Grid(query, db=db, create=False, editable=True, deletable=True, details=False, user_signature=False)
-
-    return dict(grid=grid)
-
-@action('submit_checklist', method='POST')
-@action.uses(db, auth, session)
-def submit_checklist():
-    
-    #API endpoint to save a checklist via AJAX.
-    user_email = get_user_email()
-    if not user_email:
-        abort(403)
-
-    data = request.json
-    if not data:
-        abort(400)
-
-    # Create a new checklist entry
-    event_id = db.checklist.insert(
-        latitude=data.get('latitude'),
-        longitude=data.get('longitude'),
-        date=data.get('date'),
-        observer_id=auth.current_user.get('id'),
-        duration_minutes=data.get('duration_minutes')
+    return dict(
+        speciesList=json.dumps(species),  # Pass species list as JSON
+        lat=lat,
+        lng=lng,
+        checklist_data=checklist_data,  # Pass checklist data for editing
     )
 
-    # Insert sightings associated with the checklist
-    sightings = data.get('sightings', [])
-    for sighting in sightings:
-        db.sighting.insert(
-            event_id=event_id,
-            common_name=sighting['common_name'],
-            count=sighting['count']
+
+@action("checklist/submit", method=["POST"])
+@action.uses(db, auth.user)
+def submit_checklist():
+    """Handle checklist submissions."""
+    user_id = auth.current_user.get("id")
+    data = request.json
+
+    try:
+        # Insert a new checklist into the database
+        checklist_id = db.checklist.insert(
+            latitude=data.get("lat"),
+            longitude=data.get("lng"),
+            date=datetime.utcnow(),
+            observer_id=user_id,
         )
 
-    return dict(status='success')
+        # Insert species counts into the sightings table
+        for species_data in data.get("species", []):
+            db.sighting.insert(
+                event_id=checklist_id,
+                common_name=species_data["name"],
+                count=species_data["count"],
+            )
+
+        db.commit()  # Ensure data is committed to the database
+
+        # After saving, redirect to the my_checklist page to see the submitted checklists
+        return dict(success=True)
+
+    except Exception as e:
+        logger.error(f"Error submitting checklist: {e}")
+        return dict(success=False, error=str(e))
+
+
+@action("my_checklists")
+@action.uses("my_checklists.html", db, auth.user, url_signer)
+def my_checklists():
+    if not auth.user:
+        redirect(URL('login'))  # Redirect to login page if not logged in
+    
+    """Display the checklists submitted by the current user."""
+    user_id = auth.current_user.get("id")
+
+    # Fetch the checklists submitted by the user
+    checklists = db(db.checklist.observer_id == user_id).select()
+
+    checklists_data = []
+    for checklist in checklists:
+        # Fetch the species count for each checklist (if needed)
+        species_counts = db(db.sighting.event_id == checklist.id).select()
+        species_data = [{"name": species.common_name, "count": species.count} for species in species_counts]
+
+        # Add data to the checklist info
+        checklists_data.append({
+            "id": checklist.id,
+            "date": checklist.date.strftime("%Y-%m-%d %H:%M:%S"),
+            "location": f"Lat: {checklist.latitude}, Lng: {checklist.longitude}",
+            "duration": checklist.duration_minutes,
+            "species": species_data,
+        })
+
+    return dict(checklists=checklists_data)
+
+    
 
 '''
+@action("my_checklist/data", method=["GET"])
+@action.uses(db, auth.user, url_signer)
+def my_checklist_data():
+    """Retrieve all checklists submitted by the logged-in user."""
+    print(auth.current_user)
+    if not auth.user:
+        redirect(URL('login'))  # Redirect if the user is not logged in
+    print(f"User ID: {auth.current_user.get('id')}") 
+    # Fetch all checklists for the logged-in user, sorted by date
+    checklists = (
+        db(db.checklist.observer_id == auth.current_user.get("id"))
+        .select()
+        .sort(lambda row: row.date)
+        .as_list()  # Convert to a list of dictionaries
+    )
+    print(f"Checklists fetched: {checklists}")
+    # Return the checklists as a JSON response
+    return response.json(checklists)  # Return checklists as JSON
 
 
+    #user_id = auth.current_user.get("id")
+    #checklists = db(db.checklist.observer_id == user_id).select()
+
+
+    # Format checklists
+    formatted_checklists = [
+        dict(
+            id=row.id,
+            date=row.date.strftime("%Y-%m-%d %H:%M:%S") if row.date else "N/A",
+            location=f"Lat: {row.latitude}, Lng: {row.longitude}",
+        )
+        for row in checklists
+    ]
+    return formatted_checklists
+'''
+
+@action("my_checklist/delete/<checklist_id:int>", method=["POST"])
+@action.uses(db, auth.user)
+def delete_checklist(checklist_id):
+    """Delete a specific checklist owned by the user."""
+    try:
+        # Delete the sightings related to this checklist
+        db(db.sighting.event_id == checklist_id).delete()
+
+        # Delete the checklist itself
+        db(db.checklist.id == checklist_id).delete()
+
+        db.commit()
+        return dict(success=True)
+    except Exception as e:
+        logger.error(f"Error deleting checklist: {e}")
+        return dict(success=False, error=str(e))
+    
+    
 @action("location")
 @action.uses("location.html", db, auth, url_signer)
 def index():
