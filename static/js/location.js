@@ -196,6 +196,7 @@ app.components = {
               ],
             },
             options: {
+              animation: false,
               responsive: true,
               maintainAspectRatio: false,
               scales: {
